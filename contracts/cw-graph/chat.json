@@ -1,0 +1,42 @@
+[
+  {
+    "id": "Chat",
+    "type": "Type"
+  },
+  {
+    "id": "Message",
+    "type": "Type"
+  },
+  {
+    "id": "Replay",
+    "type": "Type",
+    "from": "Any",
+    "to": "Message"
+  },
+  {
+    "id": "randomHashChat1",
+    "type": "Chat"
+  },
+  {
+    "id": "randomHashMessage1",
+    "type": "Message",
+    "value": "hello world"
+  },
+  {
+    "id": "randomHashReply1",
+    "type": "Replay",
+    "from": "randomHashChat1",
+    "to": "randomHashMessage1"
+  },
+  {
+    "id": "randomHashMessage2",
+    "type": "Message",
+    "value": "hello human"
+  },
+  {
+    "id": "randomHashReplay2",
+    "type": "Replay",
+    "from": "randomHashChat1",
+    "to": "randomHashMessage2"
+  }
+]
