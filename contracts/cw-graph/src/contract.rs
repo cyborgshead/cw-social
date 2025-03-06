@@ -5,9 +5,9 @@ use cw2::{get_contract_version, set_contract_version};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG, DeeplinkState, ID, NAMED_DEEPLINKS, deeplinks};
-use crate::execute::{execute_create_deeplink, execute_delete_deeplink, execute_update_deeplink, execute_update_admins, execute_update_executors, execute_create_deeplinks, execute_create_named_deeplink};
-use crate::query::{query_config, query_deeplinks, query_deeplinks_by_ids, query_id, query_last_id, query_named_deeplinks, query_state, query_deeplinks_by_owner, query_deeplinks_by_owner_time, query_deeplinks_by_owner_time_any};
+use crate::state::{Config, CONFIG, CyberlinkState, ID, NAMED_CYBERLINKS, cyberlinks};
+use crate::execute::{execute_create_cyberlink, execute_delete_cyberlink, execute_update_cyberlink, execute_update_admins, execute_update_executors, execute_create_cyberlinks, execute_create_named_cyberlink};
+use crate::query::{query_config, query_cyberlinks, query_cyberlinks_by_ids, query_id, query_last_id, query_named_cyberlinks, query_state, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any};
 use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:cw-graph";
@@ -32,7 +32,7 @@ pub fn instantiate(
 
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
-    deeplinks().save(deps.storage, id, &DeeplinkState {
+    cyberlinks().save(deps.storage, id, &CyberlinkState {
         type_: "Type".to_string(),
         from: "Any".to_string(),
         to: "Any".to_string(),
@@ -41,8 +41,8 @@ pub fn instantiate(
         created_at: env.block.time,
         updated_at: None,
     })?;
-    NAMED_DEEPLINKS.save(deps.storage,
-                         "Type", &DeeplinkState {
+    NAMED_CYBERLINKS.save(deps.storage,
+                          "Type", &CyberlinkState {
             type_: "Type".to_string(),
             from: "Any".to_string(),
             to: "Any".to_string(),
@@ -54,7 +54,7 @@ pub fn instantiate(
 
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
-    deeplinks().save(deps.storage, id, &DeeplinkState {
+    cyberlinks().save(deps.storage, id, &CyberlinkState {
         type_: "Any".to_string(),
         from: "Null".to_string(),
         to: "Null".to_string(),
@@ -63,8 +63,8 @@ pub fn instantiate(
         created_at: env.block.time,
         updated_at: None,
     })?;
-    NAMED_DEEPLINKS.save(deps.storage,
-                         "Any", &DeeplinkState {
+    NAMED_CYBERLINKS.save(deps.storage,
+                          "Any", &CyberlinkState {
             type_: "Type".to_string(),
             from: "Null".to_string(),
             to: "Null".to_string(),
@@ -89,11 +89,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::CreateNamedDeeplink { name, deeplink } => execute_create_named_deeplink(deps, env, info, name, deeplink),
-        ExecuteMsg::CreateDeeplink { deeplink } => execute_create_deeplink(deps, env, info, deeplink),
-        ExecuteMsg::CreateDeeplinks { deeplinks } => execute_create_deeplinks(deps, env, info, deeplinks),
-        ExecuteMsg::UpdateDeeplink { id, deeplink } => execute_update_deeplink(deps, env, info, id, deeplink),
-        ExecuteMsg::DeleteDeeplink { id } => execute_delete_deeplink(deps, env, info, id),
+        ExecuteMsg::CreateNamedCyberlink { name, cyberlink } => execute_create_named_cyberlink(deps, env, info, name, cyberlink),
+        ExecuteMsg::CreateCyberlink { cyberlink } => execute_create_cyberlink(deps, env, info, cyberlink),
+        ExecuteMsg::CreateCyberlinks { cyberlinks } => execute_create_cyberlinks(deps, env, info, cyberlinks),
+        ExecuteMsg::UpdateCyberlink { id, cyberlink } => execute_update_cyberlink(deps, env, info, id, cyberlink),
+        ExecuteMsg::DeleteCyberlink { id } => execute_delete_cyberlink(deps, env, info, id),
         ExecuteMsg::UpdateAdmins { new_admins } => execute_update_admins(deps, env, info, new_admins),
         ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors)
     }
@@ -105,15 +105,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::LastId {} => to_binary(&query_last_id(deps)?),
         QueryMsg::DebugState {} => to_binary(&query_state(deps)?),
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::Deeplink { id } => to_binary(&query_id(deps, id)?),
-        QueryMsg::Deeplinks { start_after, limit} => to_binary(&query_deeplinks(deps, start_after, limit)?),
-        QueryMsg::DeeplinksByIds { ids } => to_binary(&query_deeplinks_by_ids(deps, ids)?),
-        QueryMsg::NamedDeeplinks { start_after, limit } => to_binary(&query_named_deeplinks(deps, start_after, limit)?),
-        QueryMsg::DeeplinksByOwner { owner, start_after, limit } => to_binary(&query_deeplinks_by_owner(deps, owner, start_after, limit)?),
-        QueryMsg::DeeplinksByOwnerTime { owner, start_time, end_time, start_after, limit } => 
-            to_binary(&query_deeplinks_by_owner_time(deps, env, owner, start_time, end_time, start_after, limit)?),
-        QueryMsg::DeeplinksByOwnerTimeAny { owner, start_time, end_time, start_after, limit } => 
-            to_binary(&query_deeplinks_by_owner_time_any(deps, env, owner, start_time, end_time, start_after, limit)?),
+        QueryMsg::Cyberlink { id } => to_binary(&query_id(deps, id)?),
+        QueryMsg::Cyberlinks { start_after, limit} => to_binary(&query_cyberlinks(deps, start_after, limit)?),
+        QueryMsg::CyberlinksByIds { ids } => to_binary(&query_cyberlinks_by_ids(deps, ids)?),
+        QueryMsg::NamedCyberlinks { start_after, limit } => to_binary(&query_named_cyberlinks(deps, start_after, limit)?),
+        QueryMsg::CyberlinksByOwner { owner, start_after, limit } => to_binary(&query_cyberlinks_by_owner(deps, owner, start_after, limit)?),
+        QueryMsg::CyberlinksByOwnerTime { owner, start_time, end_time, start_after, limit } => 
+            to_binary(&query_cyberlinks_by_owner_time(deps, env, owner, start_time, end_time, start_after, limit)?),
+        QueryMsg::CyberlinksByOwnerTimeAny { owner, start_time, end_time, start_after, limit } => 
+            to_binary(&query_cyberlinks_by_owner_time_any(deps, env, owner, start_time, end_time, start_after, limit)?),
     }
 }
 

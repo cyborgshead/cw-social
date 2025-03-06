@@ -3,11 +3,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("Deleted Deeplink: {id}")]
-    DeletedDeeplink { id: Uint64 },
+    #[error("Deleted cyberlink: {id}")]
+    DeletedCyberlink { id: Uint64 },
 
     #[error("Particular links is not allowed id: {id}, from: {from}, to: {to}, type: {type_}")]
-    InvalidDeeplink {id: Uint64, from: String, to: String, type_: String},
+    InvalidCyberlink {id: Uint64, from: String, to: String, type_: String},
 
     #[error("Type not exists: {type_}")]
     TypeNotExists { type_: String },

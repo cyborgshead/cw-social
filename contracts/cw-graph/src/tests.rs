@@ -3,7 +3,7 @@ mod tests {
     use crate::contract::{execute, instantiate, query};
     use crate::msg::*;
     use crate::query::{ConfigResponse, StateResponse};
-    use crate::state::DeeplinkState;
+    use crate::state::CyberlinkState;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, Timestamp, Uint64};
     use serde_json::to_string_pretty;
@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_core_deeplinks() {
+    fn test_create_core_cyberlinks() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -38,14 +38,14 @@ mod tests {
 
         let file = File::open("core.json").expect("file should open read only");
         let reader = BufReader::new(file);
-        let deeplinks: Vec<NamedDeeplink> = serde_json::from_reader(reader).unwrap();
+        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
         let mut errors = vec![];
-        for deeplink in deeplinks {
-            let link = deeplink.clone();
-            let msg = ExecuteMsg::CreateNamedDeeplink {
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
                 name: link.id,
-                deeplink: Deeplink {
+                cyberlink: Cyberlink {
                     type_: link.type_,
                     from: link.from,
                     to: link.to,
@@ -55,10 +55,10 @@ mod tests {
             let info = mock_info(deps.api.addr_make("admin").as_str(), &[]);
             let res = execute(deps.as_mut(), mock_env(), info, msg);
             if res.is_err() {
-                println!("Deeplink error: {:?} {:?}", res, deeplink);
+                println!("Cyberlink error: {:?} {:?}", res, cyberlink);
                 errors.push(res);
             } else {
-                println!("Deeplink created: {:?}", deeplink);
+                println!("Cyberlink created: {:?}", cyberlink);
             }
         }
 
@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_deeplink() {
+    fn test_create_cyberlink() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -80,14 +80,14 @@ mod tests {
 
         let file = File::open("core.json").expect("file should open read only");
         let reader = BufReader::new(file);
-        let deeplinks: Vec<NamedDeeplink> = serde_json::from_reader(reader).unwrap();
+        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
         let mut errors = vec![];
-        for deeplink in deeplinks {
-            let link = deeplink.clone();
-            let msg = ExecuteMsg::CreateNamedDeeplink {
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
                 name: link.id,
-                deeplink: Deeplink {
+                cyberlink: Cyberlink {
                     type_: link.type_,
                     from: link.from,
                     to: link.to,
@@ -100,27 +100,27 @@ mod tests {
         }
         assert_eq!(errors.len(), 0);
 
-        let deeplink = Deeplink {
+        let cyberlink = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Query".to_string()),
             to: Some("String".to_string()),
             value: None,
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink };
         let info = mock_info("cosmwasm1335hded4gyzpt00fpz75mms4m7ck02wgw07yhw9grahj4dzg4yvqysvwql", &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         println!("{:?}", res);
-        assert_eq!(res.attributes[0].value, "create_deeplink");
+        assert_eq!(res.attributes[0].value, "create_cyberlink");
 
         let last_id: Uint64 = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::LastId {}).unwrap()).unwrap();
-        let deeplink_state1: DeeplinkState = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Deeplink { id: last_id }).unwrap()).unwrap();
-        assert_eq!(deeplink_state1.type_, "Type");
-        assert_eq!(deeplink_state1.from, "Query");
-        assert_eq!(deeplink_state1.to, "String");
+        let cyberlink_state1: CyberlinkState = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Cyberlink { id: last_id }).unwrap()).unwrap();
+        assert_eq!(cyberlink_state1.type_, "Type");
+        assert_eq!(cyberlink_state1.from, "Query");
+        assert_eq!(cyberlink_state1.to, "String");
     }
 
     #[test]
-    fn test_create_deeplink_chat() {
+    fn test_create_cyberlink_chat() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -131,14 +131,14 @@ mod tests {
 
         let file = File::open("core.json").expect("file should open read only");
         let reader = BufReader::new(file);
-        let deeplinks: Vec<NamedDeeplink> = serde_json::from_reader(reader).unwrap();
+        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
         let mut errors = vec![];
-        for deeplink in deeplinks {
-            let link = deeplink.clone();
-            let msg = ExecuteMsg::CreateNamedDeeplink {
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
                 name: link.id,
-                deeplink: Deeplink {
+                cyberlink: Cyberlink {
                     type_: link.type_,
                     from: link.from,
                     to: link.to,
@@ -153,14 +153,14 @@ mod tests {
 
         let file = File::open("project.json").expect("file should open read only");
         let reader = BufReader::new(file);
-        let deeplinks: Vec<NamedDeeplink> = serde_json::from_reader(reader).unwrap();
+        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
         let mut errors = vec![];
-        for deeplink in deeplinks {
-            let link = deeplink.clone();
-            let msg = ExecuteMsg::CreateNamedDeeplink {
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
                 name: link.id,
-                deeplink: Deeplink {
+                cyberlink: Cyberlink {
                     type_: link.type_,
                     from: link.from,
                     to: link.to,
@@ -175,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn test_update_deeplink() {
+    fn test_update_cyberlink() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn test_delete_deeplink() {
+    fn test_delete_cyberlink() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_deeplinks_by_owner_time() {
+    fn test_query_cyberlinks_by_owner_time() {
         let mut deps = mock_dependencies();
         
         // Setup: Initialize contract
@@ -222,14 +222,14 @@ mod tests {
         let mut env1 = mock_env();
         env1.block.time = time1;
         
-        // Create first deeplink
-        let deeplink1 = Deeplink {
+        // Create first cyberlink
+        let cyberlink1 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("First deeplink".to_string()),
+            value: Some("First cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink1 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = mock_info(test_user.as_str(), &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
         let first_id = res.attributes.iter()
@@ -241,14 +241,14 @@ mod tests {
         let mut env2 = mock_env();
         env2.block.time = time2;
         
-        // Create second deeplink
-        let deeplink2 = Deeplink {
+        // Create second cyberlink
+        let cyberlink2 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Second deeplink".to_string()),
+            value: Some("Second cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink2 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
         let info = mock_info(test_user.as_str(), &[]);
         let res = execute(deps.as_mut(), env2.clone(), info, msg).unwrap();
         let second_id = res.attributes.iter()
@@ -260,14 +260,14 @@ mod tests {
         let mut env3 = mock_env();
         env3.block.time = time3;
         
-        // Create third deeplink
-        let deeplink3 = Deeplink {
+        // Create third cyberlink
+        let cyberlink3 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Third deeplink".to_string()),
+            value: Some("Third cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink3 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink3 };
         let info = mock_info(test_user.as_str(), &[]);
         let res = execute(deps.as_mut(), env3.clone(), info, msg).unwrap();
         let third_id = res.attributes.iter()
@@ -275,36 +275,36 @@ mod tests {
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
-        // Update the first deeplink at time4
+        // Update the first cyberlink at time4
         let mut env4 = mock_env();
         env4.block.time = time4;
         
-        let update_deeplink = Deeplink {
+        let update_cyberlink = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Updated first deeplink".to_string()),
+            value: Some("Updated first cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::UpdateDeeplink { 
+        let msg = ExecuteMsg::UpdateCyberlink { 
             id: first_id,
-            deeplink: update_deeplink 
+            cyberlink: update_cyberlink 
         };
         let info = mock_info(test_user.as_str(), &[]);
         execute(deps.as_mut(), env4.clone(), info, msg).unwrap();
         
-        // Test 1: Query all deeplinks by owner (no time filter)
-        let query_msg = QueryMsg::DeeplinksByOwner {
+        // Test 1: Query all cyberlinks by owner (no time filter)
+        let query_msg = QueryMsg::CyberlinksByOwner {
             owner: test_user.to_string(),
             start_after: None,
             limit: None,
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 3, "Should return all 3 deeplinks");
+        assert_eq!(cyberlinks.len(), 3, "Should return all 3 cyberlinks");
         
-        // Test 2: Query deeplinks by owner with time range (time1 to time2)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        // Test 2: Query cyberlinks by owner with time range (time1 to time2)
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
@@ -312,12 +312,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks created between time1 and time2");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time1 and time2");
         
-        // Test 3: Query deeplinks by owner with time range (time2 to time3)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        // Test 3: Query cyberlinks by owner with time range (time2 to time3)
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time2,
             end_time: Some(time3),
@@ -325,12 +325,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env2.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks created between time2 and time3");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time2 and time3");
         
-        // Test 4: Query deeplinks by owner with time range (time1 to time4)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        // Test 4: Query cyberlinks by owner with time range (time1 to time4)
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
@@ -338,12 +338,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 3, "Should return all 3 deeplinks created between time1 and time4");
+        assert_eq!(cyberlinks.len(), 3, "Should return all 3 cyberlinks created between time1 and time4");
         
-        // Test 5: Query deeplinks by owner with time range (time3 to time4)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        // Test 5: Query cyberlinks by owner with time range (time3 to time4)
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
@@ -351,12 +351,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 1, "Should return 1 deeplink created between time3 and time4");
+        assert_eq!(cyberlinks.len(), 1, "Should return 1 cyberlink created between time3 and time4");
         
-        // Test 6: Query deeplinks by owner with time_any (time3 to time4)
-        let query_msg = QueryMsg::DeeplinksByOwnerTimeAny {
+        // Test 6: Query cyberlinks by owner with time_any (time3 to time4)
+        let query_msg = QueryMsg::CyberlinksByOwnerTimeAny {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
@@ -364,16 +364,16 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks (created or updated) between time3 and time4");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks (created or updated) between time3 and time4");
         
-        // Find the updated deeplink
-        let updated_deeplink = deeplinks.iter().find(|(id, d)| *id == first_id);
-        assert!(updated_deeplink.is_some(), "Should include the updated deeplink");
+        // Find the updated cyberlink
+        let updated_cyberlink = cyberlinks.iter().find(|(id, d)| *id == first_id);
+        assert!(updated_cyberlink.is_some(), "Should include the updated cyberlink");
         
         // Test 7: Query with pagination
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
@@ -381,14 +381,14 @@ mod tests {
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return only 2 deeplinks due to pagination limit");
+        assert_eq!(cyberlinks.len(), 2, "Should return only 2 cyberlinks due to pagination limit");
         
         // Test 8: Query with start_after
-        let start_after = deeplinks[0].0; // Use the ID of the first result as start_after
+        let start_after = cyberlinks[0].0; // Use the ID of the first result as start_after
         
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
@@ -396,13 +396,13 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks after the start_after ID");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks after the start_after ID");
     }
     
     #[test]
-    fn test_query_deeplinks_by_owner_time_any() {
+    fn test_query_cyberlinks_by_owner_time_any() {
         let mut deps = mock_dependencies();
         
         // Setup: Initialize contract
@@ -423,18 +423,18 @@ mod tests {
         let time3 = Timestamp::from_nanos(now + 200_000_000); // 200ms later
         let time4 = Timestamp::from_nanos(now + 300_000_000); // 300ms later
         
-        // Create deeplinks at different times
+        // Create cyberlinks at different times
         let mut env1 = mock_env();
         env1.block.time = time1;
         
-        // Create first deeplink at time1
-        let deeplink1 = Deeplink {
+        // Create first cyberlink at time1
+        let cyberlink1 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("First deeplink".to_string()),
+            value: Some("First cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink1 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = mock_info(test_user.as_str(), &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
         let first_id = res.attributes.iter()
@@ -442,53 +442,53 @@ mod tests {
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
-        // Create second deeplink at time2
+        // Create second cyberlink at time2
         let mut env2 = mock_env();
         env2.block.time = time2;
         
-        let deeplink2 = Deeplink {
+        let cyberlink2 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Second deeplink".to_string()),
+            value: Some("Second cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink2 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
         let info = mock_info(test_user.as_str(), &[]);
         execute(deps.as_mut(), env2.clone(), info, msg).unwrap();
         
-        // Update first deeplink at time3
+        // Update first cyberlink at time3
         let mut env3 = mock_env();
         env3.block.time = time3;
         
-        let update_deeplink = Deeplink {
+        let update_cyberlink = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Updated first deeplink".to_string()),
+            value: Some("Updated first cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::UpdateDeeplink { 
+        let msg = ExecuteMsg::UpdateCyberlink { 
             id: first_id,
-            deeplink: update_deeplink 
+            cyberlink: update_cyberlink 
         };
         let info = mock_info(test_user.as_str(), &[]);
         execute(deps.as_mut(), env3.clone(), info, msg).unwrap();
         
-        // Create third deeplink at time4
+        // Create third cyberlink at time4
         let mut env4 = mock_env();
         env4.block.time = time4;
         
-        let deeplink3 = Deeplink {
+        let cyberlink3 = Cyberlink {
             type_: "Type".to_string(),
             from: Some("Any".to_string()),
             to: Some("Any".to_string()),
-            value: Some("Third deeplink".to_string()),
+            value: Some("Third cyberlink".to_string()),
         };
-        let msg = ExecuteMsg::CreateDeeplink { deeplink: deeplink3 };
+        let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink3 };
         let info = mock_info(test_user.as_str(), &[]);
         execute(deps.as_mut(), env4.clone(), info, msg).unwrap();
         
         // Test 1: Query by creation time only (time1 to time2)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
@@ -496,12 +496,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks created between time1 and time2");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time1 and time2");
         
         // Test 2: Query by creation or update time (time1 to time2)
-        let query_msg = QueryMsg::DeeplinksByOwnerTimeAny {
+        let query_msg = QueryMsg::CyberlinksByOwnerTimeAny {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
@@ -509,12 +509,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks created or updated between time1 and time2");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time1 and time2");
         
         // Test 3: Query by creation time only (time3 to time4)
-        let query_msg = QueryMsg::DeeplinksByOwnerTime {
+        let query_msg = QueryMsg::CyberlinksByOwnerTime {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
@@ -522,12 +522,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 1, "Should return 1 deeplink created between time3 and time4");
+        assert_eq!(cyberlinks.len(), 1, "Should return 1 cyberlink created between time3 and time4");
         
         // Test 4: Query by creation or update time (time3 to time4)
-        let query_msg = QueryMsg::DeeplinksByOwnerTimeAny {
+        let query_msg = QueryMsg::CyberlinksByOwnerTimeAny {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
@@ -535,19 +535,19 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return 2 deeplinks created or updated between time3 and time4");
+        assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time3 and time4");
         
-        // Check that we have both the updated first deeplink and the third deeplink
-        let has_updated = deeplinks.iter().any(|(id, d)| *id == first_id);
-        let has_third = deeplinks.iter().any(|(_, d)| d.value == "Third deeplink");
+        // Check that we have both the updated first cyberlink and the third cyberlink
+        let has_updated = cyberlinks.iter().any(|(id, d)| *id == first_id);
+        let has_third = cyberlinks.iter().any(|(_, d)| d.value == "Third cyberlink");
         
-        assert!(has_updated, "Should include the updated first deeplink");
-        assert!(has_third, "Should include the third deeplink");
+        assert!(has_updated, "Should include the updated first cyberlink");
+        assert!(has_third, "Should include the third cyberlink");
         
         // Test 5: Query with pagination
-        let query_msg = QueryMsg::DeeplinksByOwnerTimeAny {
+        let query_msg = QueryMsg::CyberlinksByOwnerTimeAny {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
@@ -555,14 +555,14 @@ mod tests {
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert_eq!(deeplinks.len(), 2, "Should return only 2 deeplinks due to pagination limit");
+        assert_eq!(cyberlinks.len(), 2, "Should return only 2 cyberlinks due to pagination limit");
         
         // Test 6: Query with start_after
-        let start_after = deeplinks[0].0; // Use the ID of the first result as start_after
+        let start_after = cyberlinks[0].0; // Use the ID of the first result as start_after
         
-        let query_msg = QueryMsg::DeeplinksByOwnerTimeAny {
+        let query_msg = QueryMsg::CyberlinksByOwnerTimeAny {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
@@ -570,9 +570,9 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let deeplinks: Vec<(u64, DeeplinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
         
-        assert!(deeplinks.len() > 0, "Should return deeplinks after the start_after ID");
-        assert!(deeplinks[0].0 > start_after, "First result ID should be greater than start_after");
+        assert!(cyberlinks.len() > 0, "Should return cyberlinks after the start_after ID");
+        assert!(cyberlinks[0].0 > start_after, "First result ID should be greater than start_after");
     }
 }

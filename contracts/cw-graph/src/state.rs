@@ -6,7 +6,7 @@ use cosmwasm_std::{Addr, Timestamp};
 use cw_storage_plus::{Item, Map, MultiIndex, IndexList, IndexedMap, Index};
 
 #[cw_serde]
-pub struct DeeplinkState {
+pub struct CyberlinkState {
     #[serde(rename = "type")]
     pub type_: String,
     pub from: String,
@@ -18,27 +18,27 @@ pub struct DeeplinkState {
 }
 
 // Define the primary key namespace
-pub const DEEPLINKS_KEY: &str = "deeplinks";
+pub const CYBERLINKS_KEY: &str = "cyberlinks";
 
-// Define indexes for the deeplinks
-pub struct DeeplinkIndices<'a> {
+// Define indexes for the cyberlinks
+pub struct CyberlinkIndices<'a> {
     // Index by owner
-    pub owner: MultiIndex<'a, Addr, DeeplinkState, u64>,
+    pub owner: MultiIndex<'a, Addr, CyberlinkState, u64>,
     // Index by type
-    pub type_: MultiIndex<'a, String, DeeplinkState, u64>,
+    pub type_: MultiIndex<'a, String, CyberlinkState, u64>,
     // Index by from
-    pub from: MultiIndex<'a, String, DeeplinkState, u64>,
+    pub from: MultiIndex<'a, String, CyberlinkState, u64>,
     // Index by to
-    pub to: MultiIndex<'a, String, DeeplinkState, u64>,
+    pub to: MultiIndex<'a, String, CyberlinkState, u64>,
     
-    pub created_at: MultiIndex<'a, (Addr, u64), DeeplinkState, u64>,
-    pub updated_at: MultiIndex<'a, (Addr, u64), DeeplinkState, u64>,
+    pub created_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
+    pub updated_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
 }
 
-// Implement IndexList for DeeplinkIndices
-impl<'a> IndexList<DeeplinkState> for DeeplinkIndices<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<DeeplinkState>> + '_> {
-        let v: Vec<&dyn Index<DeeplinkState>> = vec![
+// Implement IndexList for CyberlinkIndices
+impl<'a> IndexList<CyberlinkState> for CyberlinkIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CyberlinkState>> + '_> {
+        let v: Vec<&dyn Index<CyberlinkState>> = vec![
             &self.owner, &self.type_, &self.from, &self.to, 
             &self.created_at, &self.updated_at
         ];
@@ -47,46 +47,46 @@ impl<'a> IndexList<DeeplinkState> for DeeplinkIndices<'a> {
 }
 
 // Create a function to get the indexed map
-pub fn deeplinks<'a>() -> IndexedMap<u64, DeeplinkState, DeeplinkIndices<'a>> {
-    let indices = DeeplinkIndices {
+pub fn cyberlinks<'a>() -> IndexedMap<u64, CyberlinkState, CyberlinkIndices<'a>> {
+    let indices = CyberlinkIndices {
         owner: MultiIndex::new(
-            |_pk, d: &DeeplinkState| d.owner.clone(),
-            DEEPLINKS_KEY,
-            "deeplinks__owner",
+            |_pk, d: &CyberlinkState| d.owner.clone(),
+            CYBERLINKS_KEY,
+            "cyberlinks__owner",
         ),
         type_: MultiIndex::new(
-            |_pk, d: &DeeplinkState| d.type_.clone(),
-            DEEPLINKS_KEY,
-            "deeplinks__type",
+            |_pk, d: &CyberlinkState| d.type_.clone(),
+            CYBERLINKS_KEY,
+            "cyberlinks__type",
         ),
         from: MultiIndex::new(
-            |_pk, d: &DeeplinkState| d.from.clone(),
-            DEEPLINKS_KEY,
-            "deeplinks__from",
+            |_pk, d: &CyberlinkState| d.from.clone(),
+            CYBERLINKS_KEY,
+            "cyberlinks__from",
         ),
         to: MultiIndex::new(
-            |_pk, d: &DeeplinkState| d.to.clone(),
-            DEEPLINKS_KEY,
-            "deeplinks__to",
+            |_pk, d: &CyberlinkState| d.to.clone(),
+            CYBERLINKS_KEY,
+            "cyberlinks__to",
         ),
         
         created_at: MultiIndex::new(
-            |_pk, d: &DeeplinkState| (d.owner.clone(), d.created_at.nanos()),
-            DEEPLINKS_KEY,
-            "deeplinks__created_at",
+            |_pk, d: &CyberlinkState| (d.owner.clone(), d.created_at.nanos()),
+            CYBERLINKS_KEY,
+            "cyberlinks__created_at",
         ),
         updated_at: MultiIndex::new(
-            |_pk, d: &DeeplinkState| (d.owner.clone(), d.updated_at.map_or(d.created_at.nanos(), |t| t.nanos())),
-            DEEPLINKS_KEY,
-            "deeplinks__updated_at",
+            |_pk, d: &CyberlinkState| (d.owner.clone(), d.updated_at.map_or(d.created_at.nanos(), |t| t.nanos())),
+            CYBERLINKS_KEY,
+            "cyberlinks__updated_at",
         ),
     };
-    IndexedMap::new(DEEPLINKS_KEY, indices)
+    IndexedMap::new(CYBERLINKS_KEY, indices)
 }
 
-// Named deeplinks
-pub const NAMED_DEEPLINKS_KEY: &str = "named_deeplinks";
-pub const NAMED_DEEPLINKS: Map<&str, DeeplinkState> = Map::new(NAMED_DEEPLINKS_KEY);
+// Named cyberlinks
+pub const NAMED_CYBERLINKS_KEY: &str = "named_cyberlinks";
+pub const NAMED_CYBERLINKS: Map<&str, CyberlinkState> = Map::new(NAMED_CYBERLINKS_KEY);
 
 // ID counter
 pub const ID_KEY: &str = "id";

@@ -1,7 +1,7 @@
 use cosmwasm_std::Uint64;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use crate::query::{ConfigResponse, StateResponse};
-use crate::state::DeeplinkState;
+use crate::state::CyberlinkState;
 use cosmwasm_std::Timestamp;
 
 #[cw_serde]
@@ -11,7 +11,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-pub struct NamedDeeplink {
+pub struct NamedCyberlink {
     pub id: String,
     #[serde(rename = "type")]
     pub type_: String,
@@ -20,7 +20,7 @@ pub struct NamedDeeplink {
     pub value: Option<String>
 }
 #[cw_serde]
-pub struct  Deeplink {
+pub struct Cyberlink {
     #[serde(rename = "type")]
     pub type_: String,
     pub from: Option<String>,
@@ -30,21 +30,21 @@ pub struct  Deeplink {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    CreateNamedDeeplink {
+    CreateNamedCyberlink {
         name: String,
-        deeplink: Deeplink,
+        cyberlink: Cyberlink,
     },
-    CreateDeeplink {
-        deeplink: Deeplink,
+    CreateCyberlink {
+        cyberlink: Cyberlink,
     },
-    CreateDeeplinks {
-        deeplinks: Vec<Deeplink>,
+    CreateCyberlinks {
+        cyberlinks: Vec<Cyberlink>,
     },
-    UpdateDeeplink {
+    UpdateCyberlink {
         id: u64,
-        deeplink: Deeplink,
+        cyberlink: Cyberlink,
     },
-    DeleteDeeplink {
+    DeleteCyberlink {
         id: Uint64,
     },
     UpdateAdmins {
@@ -62,42 +62,42 @@ pub enum QueryMsg {
     LastId {},
     #[returns(StateResponse)]
     DebugState {},
-    #[returns(DeeplinkState)]
-    Deeplink {
+    #[returns(CyberlinkState)]
+    Cyberlink {
         id: Uint64,
     },
     #[returns(ConfigResponse)]
     Config {},
-    #[returns(Vec<(u64, DeeplinkState)>)]
-    Deeplinks {
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    Cyberlinks {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    #[returns(Vec<(String, DeeplinkState)>)]
-    NamedDeeplinks {
+    #[returns(Vec<(String, CyberlinkState)>)]
+    NamedCyberlinks {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    #[returns(Vec<(u64, DeeplinkState)>)]
-    DeeplinksByIds {
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByIds {
         ids: Vec<u64>,
     },
-    #[returns(Vec<(u64, DeeplinkState)>)]
-    DeeplinksByOwner {
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByOwner {
         owner: String,
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    #[returns(Vec<(u64, DeeplinkState)>)]
-    DeeplinksByOwnerTime {
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByOwnerTime {
         owner: String,
         start_time: Timestamp,
         end_time: Option<Timestamp>,
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    #[returns(Vec<(u64, DeeplinkState)>)]
-    DeeplinksByOwnerTimeAny {
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByOwnerTimeAny {
         owner: String,
         start_time: Timestamp,
         end_time: Option<Timestamp>,
