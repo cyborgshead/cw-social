@@ -2,6 +2,7 @@ use cosmwasm_std::Uint64;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use crate::query::{ConfigResponse, StateResponse};
 use crate::state::DeeplinkState;
+use cosmwasm_std::Timestamp;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -84,6 +85,22 @@ pub enum QueryMsg {
     #[returns(Vec<(u64, DeeplinkState)>)]
     DeeplinksByOwner {
         owner: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, DeeplinkState)>)]
+    DeeplinksByOwnerTime {
+        owner: String,
+        start_time: Timestamp,
+        end_time: Option<Timestamp>,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, DeeplinkState)>)]
+    DeeplinksByOwnerTimeAny {
+        owner: String,
+        start_time: Timestamp,
+        end_time: Option<Timestamp>,
         start_after: Option<u64>,
         limit: Option<u32>,
     },

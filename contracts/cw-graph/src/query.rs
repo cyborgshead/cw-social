@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Deps, StdError, StdResult, Uint64, Order};
+use cosmwasm_std::{Deps, StdError, StdResult, Uint64, Order, Timestamp, Env};
 use cw_storage_plus::Bound;
 use crate::state::{CONFIG, DeeplinkState, DELETED_IDS, ID, NAMED_DEEPLINKS, deeplinks};
 use serde::{Deserialize, Serialize};
@@ -115,6 +115,100 @@ pub fn query_deeplinks_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64, 
     }
 
     Ok(links)
+}
+
+pub fn query_deeplinks_by_owner_time(
+    deps: Deps,
+    env: Env,
+    owner: String,
+    start_time: Timestamp,
+    end_time: Option<Timestamp>,
+    start_after: Option<u64>,
+    limit: Option<u32>
+) -> StdResult<Vec<(u64, DeeplinkState)>> {
+    let owner_addr = deps.api.addr_validate(&owner)?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    // Use current block time if end_time is not provided
+    let end = end_time.unwrap_or(env.block.time);
+    
+    // Convert Timestamp to u64 (nanos)
+    let start_nanos = start_time.nanos();
+    let end_nanos = end.nanos();
+    
+    // First get all deeplinks by owner
+    let all_owner_deeplinks: Vec<(u64, DeeplinkState)> = deeplinks()
+        .idx
+        .owner
+        .prefix(owner_addr)
+        .range(
+            deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            Order::Ascending,
+        )
+        .take(limit * 2) // Get more than we need to filter
+        .collect::<StdResult<Vec<_>>>()?;
+    
+    // Then filter by timestamp
+    let filtered_deeplinks = all_owner_deeplinks
+        .into_iter()
+        .filter(|(_, deeplink)| {
+            let created_at_nanos = deeplink.created_at.nanos();
+            created_at_nanos >= start_nanos && created_at_nanos <= end_nanos
+        })
+        .take(limit)
+        .collect();
+    
+    Ok(filtered_deeplinks)
+}
+
+pub fn query_deeplinks_by_owner_time_any(
+    deps: Deps,
+    env: Env,
+    owner: String,
+    start_time: Timestamp,
+    end_time: Option<Timestamp>,
+    start_after: Option<u64>,
+    limit: Option<u32>
+) -> StdResult<Vec<(u64, DeeplinkState)>> {
+    let owner_addr = deps.api.addr_validate(&owner)?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    // Use current block time if end_time is not provided
+    let end = end_time.unwrap_or(env.block.time);
+    
+    // Convert Timestamp to u64 (nanos)
+    let start_nanos = start_time.nanos();
+    let end_nanos = end.nanos();
+    
+    // Get all deeplinks by owner
+    let all_owner_deeplinks: Vec<(u64, DeeplinkState)> = deeplinks()
+        .idx
+        .owner
+        .prefix(owner_addr)
+        .range(
+            deps.storage,
+            start_after.map(Bound::exclusive),
+            None,
+            Order::Ascending,
+        )
+        .take(limit * 2) // Get more than we need to filter
+        .collect::<StdResult<Vec<_>>>()?;
+    
+    // Filter by creation or update time
+    let filtered_deeplinks = all_owner_deeplinks
+        .into_iter()
+        .filter(|(_, deeplink)| {
+            let created_at_nanos = deeplink.created_at.nanos();
+            let updated_at_nanos = deeplink.updated_at.map_or(created_at_nanos, |t| t.nanos());
+            
+            // Include if either created or updated within the range
+            (created_at_nanos >= start_nanos && created_at_nanos <= end_nanos) ||
+            (updated_at_nanos >= start_nanos && updated_at_nanos <= end_nanos)
+        })
+        .take(limit)
+        .collect();
+    
+    Ok(filtered_deeplinks)
 }
 
 #[cw_serde]

@@ -7,7 +7,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, DeeplinkState, ID, NAMED_DEEPLINKS, deeplinks};
 use crate::execute::{execute_create_deeplink, execute_delete_deeplink, execute_update_deeplink, execute_update_admins, execute_update_executors, execute_create_deeplinks, execute_create_named_deeplink};
-use crate::query::{query_config, query_deeplinks, query_deeplinks_by_ids, query_id, query_last_id, query_named_deeplinks, query_state, query_deeplinks_by_owner};
+use crate::query::{query_config, query_deeplinks, query_deeplinks_by_ids, query_id, query_last_id, query_named_deeplinks, query_state, query_deeplinks_by_owner, query_deeplinks_by_owner_time, query_deeplinks_by_owner_time_any};
 use semver::Version;
 
 const CONTRACT_NAME: &str = "crates.io:cw-graph";
@@ -100,7 +100,7 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::LastId {} => to_binary(&query_last_id(deps)?),
         QueryMsg::DebugState {} => to_binary(&query_state(deps)?),
@@ -110,6 +110,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::DeeplinksByIds { ids } => to_binary(&query_deeplinks_by_ids(deps, ids)?),
         QueryMsg::NamedDeeplinks { start_after, limit } => to_binary(&query_named_deeplinks(deps, start_after, limit)?),
         QueryMsg::DeeplinksByOwner { owner, start_after, limit } => to_binary(&query_deeplinks_by_owner(deps, owner, start_after, limit)?),
+        QueryMsg::DeeplinksByOwnerTime { owner, start_time, end_time, start_after, limit } => 
+            to_binary(&query_deeplinks_by_owner_time(deps, env, owner, start_time, end_time, start_after, limit)?),
+        QueryMsg::DeeplinksByOwnerTimeAny { owner, start_time, end_time, start_after, limit } => 
+            to_binary(&query_deeplinks_by_owner_time_any(deps, env, owner, start_time, end_time, start_after, limit)?),
     }
 }
 

@@ -30,12 +30,18 @@ pub struct DeeplinkIndices<'a> {
     pub from: MultiIndex<'a, String, DeeplinkState, u64>,
     // Index by to
     pub to: MultiIndex<'a, String, DeeplinkState, u64>,
+    
+    pub created_at: MultiIndex<'a, (Addr, u64), DeeplinkState, u64>,
+    pub updated_at: MultiIndex<'a, (Addr, u64), DeeplinkState, u64>,
 }
 
 // Implement IndexList for DeeplinkIndices
 impl<'a> IndexList<DeeplinkState> for DeeplinkIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<DeeplinkState>> + '_> {
-        let v: Vec<&dyn Index<DeeplinkState>> = vec![&self.owner, &self.type_, &self.from, &self.to];
+        let v: Vec<&dyn Index<DeeplinkState>> = vec![
+            &self.owner, &self.type_, &self.from, &self.to, 
+            &self.created_at, &self.updated_at
+        ];
         Box::new(v.into_iter())
     }
 }
@@ -62,6 +68,17 @@ pub fn deeplinks<'a>() -> IndexedMap<u64, DeeplinkState, DeeplinkIndices<'a>> {
             |_pk, d: &DeeplinkState| d.to.clone(),
             DEEPLINKS_KEY,
             "deeplinks__to",
+        ),
+        
+        created_at: MultiIndex::new(
+            |_pk, d: &DeeplinkState| (d.owner.clone(), d.created_at.nanos()),
+            DEEPLINKS_KEY,
+            "deeplinks__created_at",
+        ),
+        updated_at: MultiIndex::new(
+            |_pk, d: &DeeplinkState| (d.owner.clone(), d.updated_at.map_or(d.created_at.nanos(), |t| t.nanos())),
+            DEEPLINKS_KEY,
+            "deeplinks__updated_at",
         ),
     };
     IndexedMap::new(DEEPLINKS_KEY, indices)
