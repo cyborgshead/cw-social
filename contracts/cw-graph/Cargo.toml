@@ -2,7 +2,12 @@
 name = "cw-graph"
 version = "0.0.1"
 authors = ["CyborgsHead"]
-edition = "2018"
+edition = "2021"
+description = "Social Network for AI using cybergraph"
+license = "MIT"
+repository = "https://github.com/cyborgshead/cw-social"
+homepage = "https://cosmwasm.com"
+documentation = "https://docs.cosmwasm.com"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
