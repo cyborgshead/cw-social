@@ -28,6 +28,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -44,6 +45,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -96,6 +98,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -139,6 +142,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -172,6 +176,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -217,6 +222,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -262,6 +268,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -273,6 +280,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -286,6 +294,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string(), deps.api.addr_make("test_user").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -491,6 +500,7 @@ mod tests {
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
             executers: vec![deps.api.addr_make("executor").to_string(),  deps.api.addr_make("test_user").to_string()],
+            semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();

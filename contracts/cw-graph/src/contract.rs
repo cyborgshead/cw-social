@@ -9,13 +9,14 @@ use crate::state::{Config, CONFIG, CyberlinkState, ID, NAMED_CYBERLINKS, cyberli
 use crate::execute::{execute_create_cyberlink, execute_delete_cyberlink, execute_update_cyberlink, execute_update_admins, execute_update_executors, execute_create_cyberlinks, execute_create_named_cyberlink};
 use crate::query::{query_config, query_cyberlinks, query_cyberlinks_by_ids, query_id, query_last_id, query_named_cyberlinks, query_state, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any};
 use semver::Version;
+use crate::semcores::{SemanticCore, TypeDefinition};
 
 const CONTRACT_NAME: &str = "crates.io:cw-graph";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -30,6 +31,21 @@ pub fn instantiate(
 
     ID.save(deps.storage, &0)?;
 
+    // Initialize base types
+    create_base_types(deps.branch(), &env, &info)?;
+
+    // Load selected semantic cores
+    for core_name in msg.semantic_cores {
+        if let Some(core) = SemanticCore::from_str(&core_name) {
+            load_semantic_core(deps.branch(), &env, &info, core)?;
+        }
+    }
+
+    Ok(Response::default())
+}
+
+fn create_base_types(deps: DepsMut, env: &Env, info: &MessageInfo) -> Result<(), ContractError> {
+    // Create Type and Any types as before
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
     cyberlinks().save(deps.storage, id, &CyberlinkState {
@@ -52,6 +68,7 @@ pub fn instantiate(
             updated_at: None,
         })?;
 
+    // Create Any type
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
     cyberlinks().save(deps.storage, id, &CyberlinkState {
@@ -73,8 +90,32 @@ pub fn instantiate(
             created_at: env.block.time,
             updated_at: None,
         })?;
+    
+    Ok(())
+}
 
-    Ok(Response::default())
+fn load_semantic_core(deps: DepsMut, env: &Env, info: &MessageInfo, core: SemanticCore) -> Result<(), ContractError> {
+    let types = core.get_types();
+    
+    for type_def in types {
+        let id = ID.load(deps.storage)? + 1;
+        ID.save(deps.storage, &id)?;
+        
+        let cyberlink_state = CyberlinkState {
+            type_: type_def.type_,
+            from: type_def.from.unwrap_or_else(|| "Any".to_string()),
+            to: type_def.to.unwrap_or_else(|| "Any".to_string()),
+            value: type_def.value.map_or_else(String::new, |v| v.to_string()),
+            owner: info.sender.clone(),
+            created_at: env.block.time,
+            updated_at: None,
+        };
+
+        cyberlinks().save(deps.storage, id, &cyberlink_state)?;
+        NAMED_CYBERLINKS.save(deps.storage, &type_def.id, &cyberlink_state)?;
+    }
+    
+    Ok(())
 }
 
 pub fn map_validate(api: &dyn Api, admins: &[String]) -> StdResult<Vec<Addr>> {
