@@ -8,35 +8,56 @@
     "type": "Type"
   },
   {
-    "id": "Replay",
+    "id": "Replies",
     "type": "Type",
-    "from": "Any",
+    "from": "Chat",
     "to": "Message"
   },
   {
-    "id": "randomHashChat1",
-    "type": "Chat"
+    "id": "chat:support-room",
+    "type": "Chat",
+    "value": {
+      "name": "Customer Support",
+      "created_at": "2024-03-20T10:00:00Z",
+      "description": "Support chat room for customers"
+    }
   },
   {
-    "id": "randomHashMessage1",
+    "id": "msg:user-question",
     "type": "Message",
-    "value": "hello world"
+    "value": {
+      "content": "How do I reset my password?",
+      "sender": "user123",
+      "timestamp": "2024-03-20T10:05:00Z"
+    }
   },
   {
-    "id": "randomHashReply1",
-    "type": "Replay",
-    "from": "randomHashChat1",
-    "to": "randomHashMessage1"
-  },
-  {
-    "id": "randomHashMessage2",
+    "id": "msg:support-response",
     "type": "Message",
-    "value": "hello human"
+    "value": {
+      "content": "You can reset your password by clicking 'Forgot Password' on the login page",
+      "sender": "support_agent",
+      "timestamp": "2024-03-20T10:07:00Z"
+    }
   },
   {
-    "id": "randomHashReplay2",
-    "type": "Replay",
-    "from": "randomHashChat1",
-    "to": "randomHashMessage2"
+    "id": "reply:1",
+    "type": "Replies",
+    "from": "chat:support-room",
+    "to": "msg:user-question",
+    "value": {
+      "order": 1,
+      "thread_id": "thread:password-reset"
+    }
+  },
+  {
+    "id": "reply:2",
+    "type": "Replies",
+    "from": "chat:support-room",
+    "to": "msg:support-response",
+    "value": {
+      "order": 2,
+      "thread_id": "thread:password-reset"
+    }
   }
 ]

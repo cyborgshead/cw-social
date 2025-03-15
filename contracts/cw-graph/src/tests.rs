@@ -102,7 +102,18 @@ mod tests {
 
         let file = File::open("./semcores/chat_example.json").expect("file should open read only");
         let reader = BufReader::new(file);
-        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
+        let raw_cyberlinks: Vec<RawNamedCyberlink> = serde_json::from_reader(reader).unwrap();
+
+        let cyberlinks: Vec<NamedCyberlink> = raw_cyberlinks
+            .into_iter()
+            .map(|link| NamedCyberlink {
+                id: link.id,
+                type_: link.type_,
+                from: link.from,
+                to: link.to,
+                value: link.value.map(|v| serde_json::to_string(&v).unwrap()),
+            })
+            .collect();
 
         let mut errors = vec![];
         for cyberlink in cyberlinks {

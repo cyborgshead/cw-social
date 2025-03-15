@@ -22,7 +22,7 @@
       "to": "Account"
     },
     {
-      "id": "Creates",
+      "id": "Posts",
       "type": "Type",
       "from": "Account",
       "to": "Post"
@@ -48,6 +48,7 @@
         "bio": "Web3 enthusiast"
       }
     },
+
     {
       "id": "account:bob",
       "type": "Account",
@@ -80,6 +81,7 @@
         "timestamp": "2024-03-20T10:10:00Z"
       }
     },
+    
     {
       "id": "follows:1",
       "type": "Follows",
@@ -90,8 +92,8 @@
       }
     },
     {
-      "id": "creates:1",
-      "type": "Creates",
+      "id": "posts:1",
+      "type": "Posts",
       "from": "account:alice",
       "to": "post:1"
     },
@@ -111,6 +113,54 @@
       "to": "post:1",
       "value": {
         "repostId": "repost:1"
+      }
+    },
+    {
+      "id": "Reaction",
+      "type": "Type"
+    },
+    {
+      "id": "ReactsTo",
+      "type": "Type",
+      "from": "Account",
+      "to": "Any"
+    },
+    {
+      "id": "reaction:thumbs_up",
+      "type": "Reaction",
+      "value": {
+        "emoji": "👍",
+        "name": "thumbs_up",
+        "description": "Agree or support this content"
+      }
+    },
+    {
+      "id": "reaction:thumbs_down",
+      "type": "Reaction",
+      "value": {
+        "emoji": "👎",
+        "name": "thumbs_down",
+        "description": "Disagree or dislike this content"
+      }
+    },
+    {
+      "id": "reacts:1",
+      "type": "ReactsTo",
+      "from": "account:bob",
+      "to": "post:1",
+      "value": {
+        "reaction": "reaction:thumbs_up",
+        "timestamp": "2024-03-20T10:01:00Z"
+      }
+    },
+    {
+      "id": "reacts:2",
+      "type": "ReactsTo",
+      "from": "account:alice",
+      "to": "comment:1",
+      "value": {
+        "reaction": "reaction:thumbs_down",
+        "timestamp": "2024-03-20T10:06:00Z"
       }
     }
   ]
