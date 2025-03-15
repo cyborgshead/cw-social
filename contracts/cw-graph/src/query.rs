@@ -117,6 +117,7 @@ pub fn query_cyberlinks_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64,
     Ok(links)
 }
 
+// TODO refactor to not use filter
 pub fn query_cyberlinks_by_owner_time(
     deps: Deps,
     env: Env,
@@ -162,6 +163,7 @@ pub fn query_cyberlinks_by_owner_time(
     Ok(filtered_cyberlinks)
 }
 
+// TODO refactor to not use filter
 pub fn query_cyberlinks_by_owner_time_any(
     deps: Deps,
     env: Env,
