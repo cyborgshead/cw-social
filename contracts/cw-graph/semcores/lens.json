@@ -1,0 +1,507 @@
+[
+  {
+    "id": "Account",
+    "type": "Type"
+  },
+  {
+    "id": "App",
+    "type": "Type"
+  },
+  {
+    "id": "Feed",
+    "type": "Type"
+  },
+  {
+    "id": "Group",
+    "type": "Type"
+  },
+  {
+    "id": "Post",
+    "type": "Type"
+  },
+  {
+    "id": "Comment",
+    "type": "Type"
+  },
+  {
+    "id": "Mirror",
+    "type": "Type"
+  },
+  {
+    "id": "Username",
+    "type": "Type"
+  },
+  {
+    "id": "Namespace",
+    "type": "Type"
+  },
+  {
+    "id": "Graph",
+    "type": "Type"
+  },
+  {
+    "id": "Rule",
+    "type": "Type",
+    "from": "Any",
+    "to": "Any"
+  },
+  {
+    "id": "Action",
+    "type": "Type",
+    "from": "Any",
+    "to": "Any"
+  },
+  {
+    "id": "Token",
+    "type": "Type"
+  },
+  {
+    "id": "Collection",
+    "type": "Type"
+  },
+  {
+    "id": "Follows",
+    "type": "Type",
+    "from": "Account",
+    "to": "Account"
+  },
+  {
+    "id": "CreatesPost",
+    "type": "Type",
+    "from": "Account",
+    "to": "Post"
+  },
+  {
+    "id": "CreatesComment",
+    "type": "Type",
+    "from": "Account",
+    "to": "Comment"
+  },
+  {
+    "id": "CreatesMirror",
+    "type": "Type",
+    "from": "Account",
+    "to": "Mirror"
+  },
+  {
+    "id": "CommentsOn",
+    "type": "Type",
+    "from": "Comment",
+    "to": "Any"
+  },
+  {
+    "id": "MirrorsPost",
+    "type": "Type",
+    "from": "Mirror",
+    "to": "Post"
+  },
+  {
+    "id": "Collects",
+    "type": "Type",
+    "from": "Account",
+    "to": "Post"
+  },
+  {
+    "id": "BelongsTo",
+    "type": "Type",
+    "from": "Post",
+    "to": "Feed"
+  },
+  {
+    "id": "HasUsername",
+    "type": "Type",
+    "from": "Account",
+    "to": "Username"
+  },
+  {
+    "id": "InNamespace",
+    "type": "Type",
+    "from": "Username",
+    "to": "Namespace"
+  },
+  {
+    "id": "MemberOf",
+    "type": "Type",
+    "from": "Account",
+    "to": "Group"
+  },
+  {
+    "id": "AdminOf",
+    "type": "Type",
+    "from": "Account",
+    "to": "Any"
+  },
+  {
+    "id": "Manages",
+    "type": "Type",
+    "from": "Account",
+    "to": "Account"
+  },
+  {
+    "id": "Owns",
+    "type": "Type",
+    "from": "Account",
+    "to": "App"
+  },
+  {
+    "id": "UsesGraph",
+    "type": "Type",
+    "from": "App",
+    "to": "Graph"
+  },
+  {
+    "id": "UsesFeed",
+    "type": "Type",
+    "from": "App",
+    "to": "Feed"
+  },
+  {
+    "id": "UsesNamespace",
+    "type": "Type",
+    "from": "App",
+    "to": "Namespace"
+  },
+  {
+    "id": "AppliesRule",
+    "type": "Type",
+    "from": "Any",
+    "to": "Rule"
+  },
+  {
+    "id": "AppliesAction",
+    "type": "Type",
+    "from": "Any",
+    "to": "Action"
+  },
+  {
+    "id": "HasToken",
+    "type": "Type",
+    "from": "Group",
+    "to": "Token"
+  },
+  {
+    "id": "FollowRule",
+    "type": "Type",
+    "from": "Account",
+    "to": "Account",
+    "value": {
+        "requiredFields": ["tokenAddress", "minAmount"],
+        "validations": ["mustBePositiveAmount", "validTokenAddress"]
+    }
+  },
+  {
+    "id": "PostRule",
+    "type": "Type",
+    "from": "Account",
+    "to": "Feed",
+    "value": {
+        "requiredFields": ["contentTypes", "maxSize"],
+        "validations": ["validContentType", "sizeLimit"]
+    }
+  },
+  {
+    "id": "JoinRule",
+    "type": "Type",
+    "from": "Account",
+    "to": "Group",
+    "value": {
+        "requiredFields": ["requirements"],
+        "validations": ["membershipCriteria"]
+    }
+  },
+  {
+    "id": "UsernameRule",
+    "type": "Type",
+    "from": "Account",
+    "to": "Username",
+    "value": {
+        "requiredFields": ["format", "minLength", "maxLength"],
+        "validations": ["formatCheck", "uniqueCheck"]
+    }
+  },
+  {
+    "id": "GlobalAction",
+    "type": "Type",
+    "from": "Any",
+    "to": "Any",
+    "value": {
+        "requiredFields": ["scope", "effect"],
+        "validations": ["validScope"]
+    }
+  },
+  {
+    "id": "AccountAction",
+    "type": "Type",
+    "from": "Account",
+    "to": "Any",
+    "value": {
+        "requiredFields": ["permissions"],
+        "validations": ["validPermissions"]
+    }
+  },
+  {
+    "id": "PostAction",
+    "type": "Type",
+    "from": "Account",
+    "to": "Post",
+    "value": {
+        "requiredFields": ["actionType"],
+        "validations": ["validPostAction"]
+    }
+  },
+  {
+    "id": "CollectAction",
+    "type": "Type",
+    "from": "Account",
+    "to": "Post",
+    "value": {
+        "requiredFields": ["price", "currency", "recipient"],
+        "validations": ["validPrice", "validCurrency"]
+    }
+  },
+  {
+    "id": "account:0x1",
+    "type": "Account",
+    "value": {
+      "owner": "0xOwnerAddress",
+      "displayName": "Alice",
+      "bio": "Blockchain enthusiast",
+      "avatar": "ipfs://QmAvatar1"
+    }
+  },
+  {
+    "id": "account:0x2",
+    "type": "Account",
+    "value": {
+      "owner": "0xOwner2Address",
+      "displayName": "Bob",
+      "bio": "DeFi developer",
+      "avatar": "ipfs://QmAvatar2"
+    }
+  },
+  {
+    "id": "app:socialapp",
+    "type": "App",
+    "value": {
+      "name": "SocialApp",
+      "description": "A decentralized social network",
+      "image": "ipfs://QmAppLogo"
+    }
+  },
+  {
+    "id": "feed:global",
+    "type": "Feed",
+    "value": {
+      "name": "Global Feed",
+      "description": "Main content feed for all users"
+    }
+  },
+  {
+    "id": "namespace:social",
+    "type": "Namespace",
+    "value": {
+      "name": "social",
+      "description": "Primary namespace for SocialApp"
+    }
+  },
+  {
+    "id": "username:alice.social",
+    "type": "Username",
+    "value": {
+      "handle": "alice",
+      "registeredAt": "2025-03-01T12:00:00Z"
+    }
+  },
+  {
+    "id": "graph:social",
+    "type": "Graph",
+    "value": {
+      "name": "SocialApp Graph",
+      "description": "Connection graph for SocialApp users"
+    }
+  },
+  {
+    "id": "group:developers",
+    "type": "Group",
+    "value": {
+      "name": "Developers",
+      "description": "Community for blockchain developers",
+      "image": "ipfs://QmGroupLogo"
+    }
+  },
+  {
+    "id": "post:0x1",
+    "type": "Post",
+    "value": {
+      "contentURI": "ipfs://QmContent1",
+      "contentType": "text/markdown",
+      "timestamp": "2025-03-15T10:30:00Z",
+      "title": "Introduction to Web3"
+    }
+  },
+  {
+    "id": "comment:0x1",
+    "type": "Comment",
+    "value": {
+      "contentURI": "ipfs://QmComment1",
+      "contentType": "text/markdown",
+      "timestamp": "2025-03-15T11:15:00Z"
+    }
+  },
+  {
+    "id": "mirror:0x1",
+    "type": "Mirror",
+    "value": {
+      "timestamp": "2025-03-15T12:30:00Z"
+    }
+  },
+  {
+    "id": "rule:tokenhold",
+    "type": "FollowRule",
+    "from": "account:0x1",
+    "to": "account:0x2",
+    "value": {
+        "tokenAddress": "0xTokenAddress",
+        "minAmount": "10",
+        "description": "Must hold tokens to follow",
+        "validUntil": "2025-12-31T23:59:59Z"
+    }
+  },
+  {
+    "id": "action:collectpaid",
+    "type": "CollectAction",
+    "from": "account:0x1",
+    "to": "post:0x1",
+    "value": {
+        "price": "0.1",
+        "currency": "0xCurrencyAddress",
+        "recipient": "account:0x1",
+        "collectLimit": 100,
+        "expiresAt": "2025-12-31T23:59:59Z"
+    }
+  },
+  {
+    "id": "token:dev",
+    "type": "Token",
+    "value": {
+      "name": "Developer Token",
+      "symbol": "DEV",
+      "address": "0xTokenAddress"
+    }
+  },
+  {
+    "id": "follows:0x1",
+    "type": "Follows",
+    "from": "account:0x1",
+    "to": "account:0x2",
+    "value": {
+      "graph": "graph:social",
+      "timestamp": "2025-03-10T14:20:00Z"
+    }
+  },
+  {
+    "id": "createspost:0x1",
+    "type": "CreatesPost",
+    "from": "account:0x1",
+    "to": "post:0x1"
+  },
+  {
+    "id": "commentson:0x1",
+    "type": "CommentsOn",
+    "from": "comment:0x1",
+    "to": "post:0x1"
+  },
+  {
+    "id": "createscomment:0x2",
+    "type": "CreatesComment",
+    "from": "account:0x2",
+    "to": "comment:0x1"
+  },
+  {
+    "id": "mirrorspost:0x1",
+    "type": "MirrorsPost",
+    "from": "mirror:0x1",
+    "to": "post:0x1"
+  },
+  {
+    "id": "createsmirror:0x3",
+    "type": "CreatesMirror",
+    "from": "account:0x2",
+    "to": "mirror:0x1"
+  },
+  {
+    "id": "belongsto:0x1",
+    "type": "BelongsTo",
+    "from": "post:0x1",
+    "to": "feed:global"
+  },
+  {
+    "id": "hasusername:0x1",
+    "type": "HasUsername",
+    "from": "account:0x1",
+    "to": "username:alice.social"
+  },
+  {
+    "id": "innamespace:0x1",
+    "type": "InNamespace",
+    "from": "username:alice.social",
+    "to": "namespace:social"
+  },
+  {
+    "id": "memberof:0x1",
+    "type": "MemberOf",
+    "from": "account:0x1",
+    "to": "group:developers",
+    "value": {
+      "joinedAt": "2025-03-05T08:45:00Z"
+    }
+  },
+  {
+    "id": "adminof:0x1",
+    "type": "AdminOf",
+    "from": "account:0x1",
+    "to": "group:developers",
+    "value": {
+      "permissions": ["manage_members", "post", "edit_metadata"]
+    }
+  },
+  {
+    "id": "appliesrule:0x1",
+    "type": "AppliesRule",
+    "from": "Any",
+    "to": "rule:tokenhold"
+  },
+  {
+    "id": "appliesaction:0x1",
+    "type": "AppliesAction",
+    "from": "Any",
+    "to": "action:collectpaid"
+  },
+  {
+    "id": "usesgraph:0x1",
+    "type": "UsesGraph",
+    "from": "app:socialapp",
+    "to": "graph:social"
+  },
+  {
+    "id": "usesfeed:0x1",
+    "type": "UsesFeed",
+    "from": "app:socialapp",
+    "to": "feed:global",
+    "value": {
+      "isDefault": true
+    }
+  },
+  {
+    "id": "usesnamespace:0x1",
+    "type": "UsesNamespace",
+    "from": "app:socialapp",
+    "to": "namespace:social"
+  },
+  {
+    "id": "hastoken:0x1",
+    "type": "HasToken",
+    "from": "group:developers",
+    "to": "token:dev"
+  }
+]

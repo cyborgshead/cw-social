@@ -1,0 +1,116 @@
+[
+    {
+      "id": "Account",
+      "type": "Type"
+    },
+    {
+      "id": "Post",
+      "type": "Type"
+    },
+    {
+      "id": "Comment",
+      "type": "Type"
+    },
+    {
+      "id": "Repost",
+      "type": "Type"
+    },
+    {
+      "id": "Follows",
+      "type": "Type",
+      "from": "Account",
+      "to": "Account"
+    },
+    {
+      "id": "Creates",
+      "type": "Type",
+      "from": "Account",
+      "to": "Post"
+    },
+    {
+      "id": "Comments",
+      "type": "Type",
+      "from": "Account",
+      "to": "Post"
+    },
+    {
+      "id": "Reposts",
+      "type": "Type",
+      "from": "Account",
+      "to": "Post"
+    },
+    {
+      "id": "account:alice",
+      "type": "Account",
+      "value": {
+        "handle": "alice",
+        "displayName": "Alice",
+        "bio": "Web3 enthusiast"
+      }
+    },
+    {
+      "id": "account:bob",
+      "type": "Account",
+      "value": {
+        "handle": "bob",
+        "displayName": "Bob",
+        "bio": "Blockchain dev"
+      }
+    },
+    {
+      "id": "post:1",
+      "type": "Post",
+      "value": {
+        "content": "Hello Web3 World!",
+        "timestamp": "2024-03-20T10:00:00Z"
+      }
+    },
+    {
+      "id": "comment:1",
+      "type": "Comment",
+      "value": {
+        "content": "Great post!",
+        "timestamp": "2024-03-20T10:05:00Z"
+      }
+    },
+    {
+      "id": "repost:1",
+      "type": "Repost",
+      "value": {
+        "timestamp": "2024-03-20T10:10:00Z"
+      }
+    },
+    {
+      "id": "follows:1",
+      "type": "Follows",
+      "from": "account:bob",
+      "to": "account:alice",
+      "value": {
+        "timestamp": "2024-03-20T09:00:00Z"
+      }
+    },
+    {
+      "id": "creates:1",
+      "type": "Creates",
+      "from": "account:alice",
+      "to": "post:1"
+    },
+    {
+      "id": "comments:1",
+      "type": "Comments",
+      "from": "account:bob",
+      "to": "post:1",
+      "value": {
+        "commentId": "comment:1"
+      }
+    },
+    {
+      "id": "reposts:1",
+      "type": "Reposts",
+      "from": "account:bob",
+      "to": "post:1",
+      "value": {
+        "repostId": "repost:1"
+      }
+    }
+  ]

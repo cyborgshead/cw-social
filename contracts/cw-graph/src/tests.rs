@@ -9,6 +9,18 @@ mod tests {
     use serde_json::to_string_pretty;
     use std::fs::File;
     use std::io::BufReader;
+    use serde::Deserialize;
+    use serde_json::Value;
+
+    #[derive(Debug, Clone, Deserialize)]
+    struct RawNamedCyberlink {
+        id: String,
+        #[serde(rename = "type")]
+        type_: String,
+        from: Option<String>,
+        to: Option<String>,
+        value: Option<serde_json::Value>,
+    }
 
     #[test]
     fn test_instantiate() {
@@ -27,7 +39,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_core_cyberlinks() {
+    fn test_create_cyberlink_deepcore() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
             admins: vec![deps.api.addr_make("admin").to_string()],
@@ -36,49 +48,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let file = File::open("core.json").expect("file should open read only");
-        let reader = BufReader::new(file);
-        let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
-
-        let mut errors = vec![];
-        for cyberlink in cyberlinks {
-            let link = cyberlink.clone();
-            let msg = ExecuteMsg::CreateNamedCyberlink {
-                name: link.id,
-                cyberlink: Cyberlink {
-                    type_: link.type_,
-                    from: link.from,
-                    to: link.to,
-                    value: link.value,
-                }
-            };
-            let info = mock_info(deps.api.addr_make("admin").as_str(), &[]);
-            let res = execute(deps.as_mut(), mock_env(), info, msg);
-            if res.is_err() {
-                println!("Cyberlink error: {:?} {:?}", res, cyberlink);
-                errors.push(res);
-            } else {
-                println!("Cyberlink created: {:?}", cyberlink);
-            }
-        }
-
-        assert_eq!(errors.len(), 0);
-
-        let debug_state: StateResponse = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::DebugState {}).unwrap()).unwrap();
-        println!("{}", to_string_pretty(&debug_state).unwrap());
-    }
-
-    #[test]
-    fn test_create_cyberlink() {
-        let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            admins: vec![deps.api.addr_make("admin").to_string()],
-            executers: vec![deps.api.addr_make("executor").to_string()],
-        };
-        let info = mock_info("creator", &[]);
-        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-        let file = File::open("core.json").expect("file should open read only");
+        let file = File::open("./semcores/deepcore.json").expect("file should open read only");
         let reader = BufReader::new(file);
         let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
@@ -99,6 +69,7 @@ mod tests {
             if res.is_err() { errors.push(res) };
         }
         assert_eq!(errors.len(), 0);
+        println!("{:?}", errors);
 
         let cyberlink = Cyberlink {
             type_: "Type".to_string(),
@@ -129,7 +100,7 @@ mod tests {
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let file = File::open("core.json").expect("file should open read only");
+        let file = File::open("./semcores/chat_example.json").expect("file should open read only");
         let reader = BufReader::new(file);
         let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
@@ -150,8 +121,18 @@ mod tests {
             if res.is_err() { errors.push(res) };
         }
         assert_eq!(errors.len(), 0);
+    }
+    #[test]
+    fn test_create_cyberlink_project() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            admins: vec![deps.api.addr_make("admin").to_string()],
+            executers: vec![deps.api.addr_make("executor").to_string()],
+        };
+        let info = mock_info("creator", &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let file = File::open("project.json").expect("file should open read only");
+        let file = File::open("./semcores/project_example.json").expect("file should open read only");
         let reader = BufReader::new(file);
         let cyberlinks: Vec<NamedCyberlink> = serde_json::from_reader(reader).unwrap();
 
@@ -171,6 +152,96 @@ mod tests {
             let res = execute(deps.as_mut(), mock_env(), info, msg);
             if res.is_err() { errors.push(res) };
         }
+        assert_eq!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_create_cyberlink_social() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            admins: vec![deps.api.addr_make("admin").to_string()],
+            executers: vec![deps.api.addr_make("executor").to_string()],
+        };
+        let info = mock_info("creator", &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let file = File::open("./semcores/social_example.json").expect("file should open read only");
+        let reader = BufReader::new(file);
+        let raw_cyberlinks: Vec<RawNamedCyberlink> = serde_json::from_reader(reader).unwrap();
+
+        let cyberlinks: Vec<NamedCyberlink> = raw_cyberlinks
+            .into_iter()
+            .map(|link| NamedCyberlink {
+                id: link.id,
+                type_: link.type_,
+                from: link.from,
+                to: link.to,
+                value: link.value.map(|v| serde_json::to_string(&v).unwrap()),
+            })
+            .collect();
+
+        let mut errors = vec![];
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
+                name: link.id,
+                cyberlink: Cyberlink {
+                    type_: link.type_,
+                    from: link.from,
+                    to: link.to,
+                    value: link.value,
+                }
+            };
+            let info = mock_info(deps.api.addr_make("admin").as_str(), &[]);
+            let res = execute(deps.as_mut(), mock_env(), info, msg);
+            if res.is_err() { errors.push(res) };
+        }
+        println!("{:?}", errors);
+        assert_eq!(errors.len(), 0);
+    }
+
+    #[test]
+    fn test_create_cyberlink_lens() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            admins: vec![deps.api.addr_make("admin").to_string()],
+            executers: vec![deps.api.addr_make("executor").to_string()],
+        };
+        let info = mock_info("creator", &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let file = File::open("./semcores/lens.json").expect("file should open read only");
+        let reader = BufReader::new(file);
+        let raw_cyberlinks: Vec<RawNamedCyberlink> = serde_json::from_reader(reader).unwrap();
+
+        let cyberlinks: Vec<NamedCyberlink> = raw_cyberlinks
+            .into_iter()
+            .map(|link| NamedCyberlink {
+                id: link.id,
+                type_: link.type_,
+                from: link.from,
+                to: link.to,
+                value: link.value.map(|v| serde_json::to_string(&v).unwrap()),
+            })
+            .collect();
+
+        let mut errors = vec![];
+        for cyberlink in cyberlinks {
+            let link = cyberlink.clone();
+            let msg = ExecuteMsg::CreateNamedCyberlink {
+                name: link.id,
+                cyberlink: Cyberlink {
+                    type_: link.type_,
+                    from: link.from,
+                    to: link.to,
+                    value: link.value,
+                }
+            };
+            let info = mock_info(deps.api.addr_make("admin").as_str(), &[]);
+            let res = execute(deps.as_mut(), mock_env(), info, msg);
+            if res.is_err() { errors.push(res) };
+        }
+        println!("{:?}", errors);
         assert_eq!(errors.len(), 0);
     }
 
