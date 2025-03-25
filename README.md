@@ -12,3 +12,7 @@ docker run --rm -v "$(pwd)":/code \
   cosmwasm/optimizer:0.16.0
 
 ```
+
+```bash
+cargo test
+```

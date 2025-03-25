@@ -1,3 +1,4 @@
+use std::u64::MAX;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Deps, StdError, StdResult, Uint64, Order, Timestamp, Env};
 use cw_storage_plus::Bound;
@@ -117,7 +118,6 @@ pub fn query_cyberlinks_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64,
     Ok(links)
 }
 
-// TODO refactor to not use filter
 pub fn query_cyberlinks_by_owner_time(
     deps: Deps,
     env: Env,
@@ -136,34 +136,25 @@ pub fn query_cyberlinks_by_owner_time(
     let start_nanos = start_time.nanos();
     let end_nanos = end.nanos();
     
-    // First get all cyberlinks by owner
-    let all_owner_cyberlinks: Vec<(u64, CyberlinkState)> = cyberlinks()
+    // Query using the created_at index with bounds
+    let cyberlinks = cyberlinks()
         .idx
-        .owner
-        .prefix(owner_addr)
+        .created_at
+        // Use sub_prefix with just the owner (first part of composite key)
+        .sub_prefix(owner_addr)
         .range(
             deps.storage,
-            start_after.map(Bound::exclusive),
-            None,
+            // Use bounds on just the timestamp part
+            Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
+            Some(Bound::inclusive((end_nanos, u64::MAX))),
             Order::Ascending,
         )
-        .take(limit * 2) // Get more than we need to filter
+        .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
     
-    // Then filter by timestamp
-    let filtered_cyberlinks = all_owner_cyberlinks
-        .into_iter()
-        .filter(|(_, cyberlink)| {
-            let created_at_nanos = cyberlink.created_at.nanos();
-            created_at_nanos >= start_nanos && created_at_nanos <= end_nanos
-        })
-        .take(limit)
-        .collect();
-    
-    Ok(filtered_cyberlinks)
+    Ok(cyberlinks)
 }
 
-// TODO refactor to not use filter
 pub fn query_cyberlinks_by_owner_time_any(
     deps: Deps,
     env: Env,
@@ -182,35 +173,51 @@ pub fn query_cyberlinks_by_owner_time_any(
     let start_nanos = start_time.nanos();
     let end_nanos = end.nanos();
     
-    // Get all cyberlinks by owner
-    let all_owner_cyberlinks: Vec<(u64, CyberlinkState)> = cyberlinks()
+    // Get cyberlinks by created_at time
+    let created_cyberlinks = cyberlinks()
         .idx
-        .owner
-        .prefix(owner_addr)
+        .created_at
+        .sub_prefix(owner_addr.clone())
         .range(
             deps.storage,
-            start_after.map(Bound::exclusive),
-            None,
+            Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
+            Some(Bound::inclusive((end_nanos, u64::MAX))),
             Order::Ascending,
         )
-        .take(limit * 2) // Get more than we need to filter
+        .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
     
-    // Filter by creation or update time
-    let filtered_cyberlinks = all_owner_cyberlinks
-        .into_iter()
-        .filter(|(_, cyberlink)| {
-            let created_at_nanos = cyberlink.created_at.nanos();
-            let updated_at_nanos = cyberlink.updated_at.map_or(created_at_nanos, |t| t.nanos());
-            
-            // Include if either created or updated within the range
-            (created_at_nanos >= start_nanos && created_at_nanos <= end_nanos) ||
-            (updated_at_nanos >= start_nanos && updated_at_nanos <= end_nanos)
-        })
+    // Get cyberlinks by updated_at time
+    let updated_cyberlinks = cyberlinks()
+        .idx
+        .updated_at
+        .sub_prefix(owner_addr)
+        .range(
+            deps.storage,
+            Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
+            Some(Bound::inclusive((end_nanos, u64::MAX))),
+            Order::Ascending,
+        )
         .take(limit)
-        .collect();
+        .collect::<StdResult<Vec<_>>>()?;
     
-    Ok(filtered_cyberlinks)
+    // Merge and deduplicate the results
+    let mut all_cyberlinks = created_cyberlinks;
+    
+    // Add cyberlinks from updated_at if they're not already in the list
+    for (id, cyberlink) in updated_cyberlinks {
+        if !all_cyberlinks.iter().any(|(existing_id, _)| *existing_id == id) {
+            all_cyberlinks.push((id, cyberlink));
+        }
+    }
+    
+    // Sort by ID for consistent results
+    all_cyberlinks.sort_by(|a, b| a.0.cmp(&b.0));
+    
+    // Apply limit
+    let result = all_cyberlinks.into_iter().take(limit).collect();
+    
+    Ok(result)
 }
 
 #[cw_serde]
