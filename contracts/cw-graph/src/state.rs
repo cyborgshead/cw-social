@@ -1,9 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Timestamp};
-use cw_storage_plus::{Item, Map, MultiIndex, IndexList, IndexedMap, Index};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
 #[cw_serde]
 pub struct CyberlinkState {

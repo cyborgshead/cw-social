@@ -3,7 +3,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use crate::query::{ConfigResponse, StateResponse};
 use crate::state::CyberlinkState;
 use cosmwasm_std::Timestamp;
-use serde::{Serialize, Deserialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {

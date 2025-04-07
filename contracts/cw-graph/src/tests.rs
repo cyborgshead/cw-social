@@ -1,17 +1,15 @@
 #[cfg(test)]
 mod tests {
     use crate::contract::{execute, instantiate, query};
-    use crate::msg::*;
-    use crate::query::{ConfigResponse, StateResponse};
-    use crate::state::{CyberlinkState, NAMED_CYBERLINKS};
     use crate::error::ContractError;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::{from_binary, Addr, OwnedDeps, Response, Timestamp, Uint64};
-    use serde_json::to_string_pretty;
+    use crate::msg::*;
+    use crate::query::ConfigResponse;
+    use crate::state::{CyberlinkState, NAMED_CYBERLINKS};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockApi, MockQuerier, MockStorage};
+    use cosmwasm_std::{from_json, Addr, OwnedDeps, Response, Timestamp, Uint64};
+    use serde::Deserialize;
     use std::fs::File;
     use std::io::BufReader;
-    use serde::Deserialize;
-    use serde_json::Value;
 
     #[derive(Debug, Clone, Deserialize)]
     struct RawNamedCyberlink {
@@ -60,7 +58,7 @@ mod tests {
                     value: link.value,
                 }
             };
-            let info = mock_info(admin.as_str(), &[]);
+            let info = message_info(admin, &[]);
             let res = execute(deps.as_mut(), mock_env(), info, msg);
             if res.is_err() { errors.push(res) };
         }
@@ -82,7 +80,7 @@ mod tests {
             let msg = ExecuteMsg::CreateCyberlink {
                 cyberlink: cyberlink.clone()
             };
-            let info = mock_info(admin.as_str(), &[]);
+            let info = message_info(admin, &[]);
             let res = execute(deps.as_mut(), mock_env(), info, msg);
             if res.is_err() { errors.push(res) };
         }
@@ -98,11 +96,11 @@ mod tests {
             executers: vec![deps.api.addr_make("executor").to_string()],
             semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
-        let info = mock_info("creator", &[]);
+        let info = message_info(&deps.api.addr_make("admin"), &[]);
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let config: ConfigResponse = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
+        let config: ConfigResponse = from_json(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
         assert_eq!(config.admins, vec![deps.api.addr_make("admin").to_string()]);
         assert_eq!(config.executors, vec![deps.api.addr_make("executor").to_string()]);
     }
@@ -118,7 +116,7 @@ mod tests {
 
         let admin = deps.api.addr_make("admin");
 
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/deep.json");
@@ -132,7 +130,7 @@ mod tests {
             value: None,
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink };
-        let info = mock_info(admin.as_str(), &[]);
+        let info = message_info(&admin, &[]);
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(res.attributes[0].value, "create_cyberlink");
     }
@@ -148,7 +146,7 @@ mod tests {
 
         let admin = deps.api.addr_make("admin");
 
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/chat.json");
@@ -167,7 +165,7 @@ mod tests {
 
         let admin = deps.api.addr_make("admin");
 
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/chatgpt.json");
@@ -186,7 +184,7 @@ mod tests {
         
         let admin = deps.api.addr_make("admin");
         
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/project.json");
@@ -205,7 +203,7 @@ mod tests {
         
         let admin = deps.api.addr_make("admin");
         
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/social.json");
@@ -224,7 +222,7 @@ mod tests {
         
         let admin = deps.api.addr_make("admin");
         
-        let info = mock_info("creator", &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let errors = process_and_execute_cyberlinks_from_file(&mut deps, &admin, "./semcores/lens.json");
@@ -241,7 +239,10 @@ mod tests {
             executers: vec![deps.api.addr_make("executor").to_string(), deps.api.addr_make("user").to_string()],
             semantic_cores: vec![],
         };
-        let info = mock_info("creator", &[]);
+
+        let creator = deps.api.addr_make("creator");
+
+        let info = message_info(&creator, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         
         // Create test users
@@ -259,7 +260,7 @@ mod tests {
             name: "Post".to_string(),
             cyberlink: type_msg,
         };
-        let admin_info = mock_info(admin.as_str(), &[]);
+        let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), mock_env(), admin_info.clone(), msg).unwrap();
         
         // Create a cyberlink as user
@@ -270,7 +271,7 @@ mod tests {
             value: Some("Original content".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink };
-        let user_info = mock_info(user.as_str(), &[]);
+        let user_info = message_info(&user, &[]);
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
         // Extract the numeric ID from the response
@@ -297,7 +298,7 @@ mod tests {
         // Verify the update was successful
         let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let cyberlink_state: CyberlinkState = from_binary(&res).unwrap();
+        let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
         
         assert_eq!(cyberlink_state.type_, "Post");
         assert_eq!(cyberlink_state.value, "Updated content");
@@ -342,7 +343,7 @@ mod tests {
         
         // Test unauthorized update (non-owner)
         let other_user = deps.api.addr_make("other_user");
-        let other_info = mock_info(other_user.as_str(), &[]);
+        let other_info = message_info(&other_user, &[]);
         let update_msg = ExecuteMsg::UpdateCyberlink {
             id: numeric_id,
             cyberlink: updated_cyberlink,
@@ -371,7 +372,7 @@ mod tests {
         // Verify admin update
         let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let cyberlink_state: CyberlinkState = from_binary(&res).unwrap();
+        let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
 
         assert_eq!(cyberlink_state.value, "Admin updated");
     }
@@ -384,7 +385,10 @@ mod tests {
             executers: vec![deps.api.addr_make("executor").to_string(), deps.api.addr_make("user").to_string()],
             semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
-        let info = mock_info("creator", &[]);
+
+        let creator = deps.api.addr_make("creator");
+
+        let info = message_info(&creator, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         
         // Create test users
@@ -403,7 +407,7 @@ mod tests {
             name: "Post".to_string(),
             cyberlink: type_msg,
         };
-        let admin_info = mock_info(admin.as_str(), &[]);
+        let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), mock_env(), admin_info.clone(), msg).unwrap();
         
         // Create a cyberlink as user
@@ -414,7 +418,7 @@ mod tests {
             value: Some("Content to be deleted".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink };
-        let user_info = mock_info(user.as_str(), &[]);
+        let user_info = message_info(&user, &[]);
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
         // Extract the numeric ID and formatted ID from the response
@@ -434,11 +438,11 @@ mod tests {
         // Verify cyberlink exists
         let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
         let res = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
-        let _: CyberlinkState = from_binary(&res).unwrap();
+        let _: CyberlinkState = from_json(&res).unwrap();
         
         // Test that non-admin cannot delete
         let delete_msg = ExecuteMsg::DeleteCyberlink { id: Uint64::from(numeric_id) };
-        let other_info = mock_info(other_user.as_str(), &[]);
+        let other_info = message_info(&other_user, &[]);
         let err = execute(deps.as_mut(), mock_env(), other_info, delete_msg.clone()).unwrap_err();
         assert!(matches!(err, ContractError::Unauthorized {}));
         
@@ -462,7 +466,7 @@ mod tests {
             to: None,
             value: Some("Admin will delete this".to_string()),
         };
-        let executor_info = mock_info(deps.api.addr_make("executor").as_str(), &[]);
+        let executor_info = message_info(&deps.api.addr_make("executor"), &[]);
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
         let res = execute(deps.as_mut(), mock_env(), executor_info, msg).unwrap();
         
@@ -499,7 +503,10 @@ mod tests {
             executers: vec![deps.api.addr_make("executor").to_string(), deps.api.addr_make("test_user").to_string()],
             semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
-        let info = mock_info("creator", &[]);
+
+        let creator = deps.api.addr_make("creator");
+
+        let info = message_info(&creator, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         
         // Create test user
@@ -524,7 +531,7 @@ mod tests {
             value: Some("First cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
         let first_id = res.attributes.iter()
             .find(|attr| attr.key == "numeric_id")
@@ -543,9 +550,9 @@ mod tests {
             value: Some("Second cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env2.clone(), info, msg).unwrap();
-        let second_id = res.attributes.iter()
+        let _second_id = res.attributes.iter()
             .find(|attr| attr.key == "numeric_id")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
@@ -562,9 +569,9 @@ mod tests {
             value: Some("Third cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink3 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env3.clone(), info, msg).unwrap();
-        let third_id = res.attributes.iter()
+        let _third_id = res.attributes.iter()
             .find(|attr| attr.key == "numeric_id")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
@@ -583,7 +590,7 @@ mod tests {
             id: first_id,
             cyberlink: update_cyberlink 
         };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         execute(deps.as_mut(), env4.clone(), info, msg).unwrap();
         
         // Test 1: Query all cyberlinks by owner (no time filter)
@@ -593,7 +600,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 3, "Should return all 3 cyberlinks");
         
@@ -606,7 +613,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time1 and time2");
         
@@ -619,7 +626,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env2.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time2 and time3");
         
@@ -632,7 +639,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 3, "Should return all 3 cyberlinks created between time1 and time4");
         
@@ -645,7 +652,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 1, "Should return 1 cyberlink created between time3 and time4");
         
@@ -658,12 +665,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks (created or updated) between time3 and time4");
         
         // Find the updated cyberlink
-        let updated_cyberlink = cyberlinks.iter().find(|(id, d)| *id == first_id);
+        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == first_id);
         assert!(updated_cyberlink.is_some(), "Should include the updated cyberlink");
         
         // Test 7: Query with pagination
@@ -675,7 +682,7 @@ mod tests {
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return only 2 cyberlinks due to pagination limit");
         
@@ -690,7 +697,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks after the start_after ID");
     }
@@ -705,7 +712,8 @@ mod tests {
             executers: vec![deps.api.addr_make("executor").to_string(),  deps.api.addr_make("test_user").to_string()],
             semantic_cores: vec!["chat".to_string(), "social_example".to_string()],
         };
-        let info = mock_info("creator", &[]);
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
         
         // Create test user
@@ -730,7 +738,7 @@ mod tests {
             value: Some("First cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
         let first_id = res.attributes.iter()
             .find(|attr| attr.key == "numeric_id")
@@ -748,7 +756,7 @@ mod tests {
             value: Some("Second cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         execute(deps.as_mut(), env2.clone(), info, msg).unwrap();
         
         // Update first cyberlink at time3
@@ -765,7 +773,7 @@ mod tests {
             id: first_id,
             cyberlink: update_cyberlink 
         };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         execute(deps.as_mut(), env3.clone(), info, msg).unwrap();
         
         // Create third cyberlink at time4
@@ -779,7 +787,7 @@ mod tests {
             value: Some("Third cyberlink".to_string()),
         };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink3 };
-        let info = mock_info(test_user.as_str(), &[]);
+        let info = message_info(&test_user, &[]);
         execute(deps.as_mut(), env4.clone(), info, msg).unwrap();
         
         // Test 1: Query by creation time only (time1 to time2)
@@ -791,7 +799,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created between time1 and time2");
         
@@ -804,7 +812,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time1 and time2");
         
@@ -817,7 +825,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 1, "Should return 1 cyberlink created between time3 and time4");
         
@@ -830,12 +838,12 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time3 and time4");
         
         // Check that we have both the updated first cyberlink and the third cyberlink
-        let has_updated = cyberlinks.iter().any(|(id, d)| *id == first_id);
+        let has_updated = cyberlinks.iter().any(|(id, _)| *id == first_id);
         let has_third = cyberlinks.iter().any(|(_, d)| d.value == "Third cyberlink");
         
         assert!(has_updated, "Should include the updated first cyberlink");
@@ -850,7 +858,7 @@ mod tests {
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         
         assert_eq!(cyberlinks.len(), 2, "Should return only 2 cyberlinks due to pagination limit");
         
@@ -865,7 +873,7 @@ mod tests {
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
-        let cyberlinks: Vec<(u64, CyberlinkState)> = from_binary(&res).unwrap();
+        let cyberlinks: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert!(cyberlinks.len() > 0, "Should return cyberlinks after the start_after ID");
         // FIXME
         // assert!(cyberlinks[0].0 > start_after, "First result ID should be greater than start_after");
@@ -874,7 +882,6 @@ mod tests {
     #[test]
     fn test_formatted_ids() {
         let mut deps = mock_dependencies();
-        let timestamp = mock_env().block.time;
         let test_user = deps.api.addr_make("test_user");
         let admin = deps.api.addr_make("admin");
 
@@ -884,7 +891,7 @@ mod tests {
             executers: vec![test_user.to_string()],
             semantic_cores: Vec::new(),
         };
-        let info = mock_info(admin.as_str(), &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
 
         // Create a Type (admin only)
@@ -910,7 +917,7 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink {
             cyberlink: cyberlink.clone(),
         };
-        let user_info = mock_info(test_user.as_str(), &[]);
+        let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Check that formatted_id was returned in response
@@ -927,7 +934,7 @@ mod tests {
             formatted_id: formatted_id.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let cyberlink_state: CyberlinkState = from_binary(&response).unwrap();
+        let cyberlink_state: CyberlinkState = from_json(&response).unwrap();
 
         assert_eq!(cyberlink_state.type_, "Post");
         assert_eq!(cyberlink_state.value, "Test post content");
@@ -991,7 +998,6 @@ mod tests {
     #[test]
     fn test_update_type_restriction() {
         let mut deps = mock_dependencies();
-        let timestamp = mock_env().block.time;
         let test_user = deps.api.addr_make("test_user");
         let admin = deps.api.addr_make("admin");
 
@@ -1001,7 +1007,7 @@ mod tests {
             executers: vec![test_user.to_string()],
             semantic_cores: Vec::new(),
         };
-        let info = mock_info(admin.as_str(), &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
 
         // Create base types for testing
@@ -1033,7 +1039,7 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink {
             cyberlink: post,
         };
-        let user_info = mock_info(test_user.as_str(), &[]);
+        let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Get the ID from the response
@@ -1088,7 +1094,7 @@ mod tests {
             id: Uint64::from(numeric_id)
         };
         let query_response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-        let updated_state: CyberlinkState = from_binary(&query_response).unwrap();
+        let updated_state: CyberlinkState = from_json(&query_response).unwrap();
         
         assert_eq!(updated_state.type_, "Post");
         assert_eq!(updated_state.value, "Valid update");
@@ -1097,7 +1103,6 @@ mod tests {
     #[test]
     fn test_delete_keeps_formatted_ids() {
         let mut deps = mock_dependencies();
-        let timestamp = mock_env().block.time;
         let admin = deps.api.addr_make("admin");
         let test_user = deps.api.addr_make("test_user");
 
@@ -1107,7 +1112,7 @@ mod tests {
             executers: vec![test_user.to_string()],
             semantic_cores: Vec::new(),
         };
-        let info = mock_info(admin.clone().as_str(), &[]);
+        let info = message_info(&admin, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
 
         // Create a Type (admin only)
@@ -1133,7 +1138,7 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink {
             cyberlink: post,
         };
-        let user_info = mock_info(test_user.clone().as_str(), &[]);
+        let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Get the numeric and formatted IDs
@@ -1149,13 +1154,12 @@ mod tests {
             .unwrap()
             .value
             .clone();
-        println!("formatted_id {:?} numeric_id {:?}", formatted_id, numeric_id);
 
         // Delete the cyberlink
         let delete_msg = ExecuteMsg::DeleteCyberlink {
             id: Uint64::from(numeric_id),
         };
-        let admin_info = mock_info(admin.clone().as_str(), &[]);
+        let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), mock_env(), admin_info, delete_msg).unwrap();
 
         // Verify the numeric ID is marked as deleted

@@ -31,6 +31,12 @@ pub enum ContractError {
     #[error("Cannot change cyberlink type: ID {id} from {original_type} to {new_type}")]
     CannotChangeType { id: u64, original_type: String, new_type: String },
 
+    #[error("Cannot change cyberlink {field}: ID {id} from {original} to {new}")]
+    CannotChangeLinks { id: u64, field: String, original: String, new: String },
+
+    #[error("Invalid name format: '{name}' contains a colon character (:) which is not allowed")]
+    InvalidNameFormat { name: String },
+
     #[error("{0}")]
     Std(#[from] StdError),
 

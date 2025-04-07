@@ -300,11 +300,9 @@
     }
   },
   {
-    "id": "username:alice.social",
     "type": "Username",
     "value": {
-      "handle": "alice",
-      "registeredAt": "2025-03-01T12:00:00Z"
+      "handle": "alice.social"
     }
   },
   {
@@ -418,11 +416,11 @@
   {
     "type": "HasUsername",
     "from": "Account:1",
-    "to": "username:alice.social"
+    "to": "Username:1"
   },
   {
     "type": "InNamespace",
-    "from": "username:alice.social",
+    "from": "Username:1",
     "to": "Namespace:1"
   },
   {

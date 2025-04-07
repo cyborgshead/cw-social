@@ -1,10 +1,8 @@
-use cosmwasm_std::{attr, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, SubMsg, Uint64};
-use cosmwasm_std::Order::Ascending;
-use cw_storage_plus::Bound;
-use crate::error::ContractError;
-use crate::state::{CONFIG, CyberlinkState, ID, DELETED_IDS, NAMED_CYBERLINKS, TYPE_IDS, cyberlinks};
 use crate::contract::map_validate;
+use crate::error::ContractError;
 use crate::msg::Cyberlink;
+use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS, TYPE_IDS};
+use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64};
 
 fn validate_cyberlink(
     deps: Deps,
@@ -45,7 +43,7 @@ fn validate_cyberlink(
     }
 
     // Additional validation for type conflicts
-    if let (Some(ref from), Some(ref to)) = (&cyberlink.from, &cyberlink.to) {
+    if let (Some(_), Some(_)) = (&cyberlink.from, &cyberlink.to) {
         if dtype.clone().from.ne(&"Any") && dtype.clone().from.ne(&dfrom.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
                 id: id.unwrap_or_else(|| "_".to_string()),
@@ -91,7 +89,7 @@ fn create_cyberlink(
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
 
-    let mut formatted_id: String;
+    let formatted_id: String;
     if name.is_none() {
         // Get and increment the type-specific ID
         let type_id = TYPE_IDS.may_load(deps.storage, cyberlink.type_.as_str())?.unwrap_or(0) + 1;
@@ -136,6 +134,11 @@ pub fn execute_create_named_cyberlink(
     let config = CONFIG.load(deps.storage)?;
     if !config.can_modify(info.sender.as_str()) {
         return Err(ContractError::Unauthorized {});
+    }
+
+    // Validate name doesn't contain colons
+    if name.contains(':') {
+        return Err(ContractError::InvalidNameFormat { name });
     }
 
     // Validate the cyberlink
@@ -241,15 +244,32 @@ pub fn execute_update_cyberlink(
         });
     }
 
-    // Validate the cyberlink
-    validate_cyberlink(deps.as_ref(), Some(id.to_string()), cyberlink.clone())?;
+    // Ensure from and to are not changed
+    if let Some(from) = &cyberlink.from {
+        if *from != cyberlink_state.from {
+            return Err(ContractError::CannotChangeLinks {
+                id,
+                field: "from".to_string(),
+                original: cyberlink_state.from.clone(),
+                new: from.clone(),
+            });
+        }
+    }
+
+    if let Some(to) = &cyberlink.to {
+        if *to != cyberlink_state.to {
+            return Err(ContractError::CannotChangeLinks {
+                id,
+                field: "to".to_string(),
+                original: cyberlink_state.to.clone(),
+                new: to.clone(),
+            });
+        }
+    }
     
-    // Update the cyberlink
-    cyberlink_state.from = cyberlink.from.unwrap_or_else(|| "Any".to_string());
-    cyberlink_state.to = cyberlink.to.unwrap_or_else(|| "Any".to_string());
+    // Update only the value of the cyberlink
     cyberlink_state.value = cyberlink.value.unwrap_or_default();
     cyberlink_state.updated_at = Some(env.block.time);
-    // Keep the same formatted_id (we don't change this since we don't change the type)
 
     // Save the updated cyberlink to the IndexedMap
     cyberlinks().save(deps.storage, id, &cyberlink_state)?;
@@ -260,6 +280,7 @@ pub fn execute_update_cyberlink(
     )
 }
 
+// TODO revisit delete, delete in maps, remove DELETED_IDS
 pub fn execute_delete_cyberlink(
     deps: DepsMut,
     _env: Env,

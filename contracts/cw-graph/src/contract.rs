@@ -1,15 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, StdResult, MessageInfo, Reply, Api, Addr, Empty, Response, to_json_binary};
-use cw2::{get_contract_version, set_contract_version};
+use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cw2::set_contract_version;
 
 use crate::error::ContractError;
+use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG, CyberlinkState, ID, NAMED_CYBERLINKS, cyberlinks};
-use crate::execute::{execute_create_cyberlink, execute_delete_cyberlink, execute_update_cyberlink, execute_update_admins, execute_update_executors, execute_create_cyberlinks, execute_create_named_cyberlink};
-use crate::query::{query_config, query_cyberlinks, query_cyberlinks_by_ids, query_id, query_last_id, query_named_cyberlinks, query_state, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_cyberlink_by_formatted_id};
-use semver::Version;
-use crate::semcores::{SemanticCore, TypeDefinition};
+use crate::query::{query_config, query_cyberlink_by_formatted_id, query_cyberlinks, query_cyberlinks_by_ids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_id, query_last_id, query_named_cyberlinks, query_state};
+use crate::semcores::SemanticCore;
+use crate::state::{cyberlinks, Config, CyberlinkState, CONFIG, ID, NAMED_CYBERLINKS};
 
 const CONTRACT_NAME: &str = "crates.io:cw-graph";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

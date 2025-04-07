@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Timestamp};
 use serde_json;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
