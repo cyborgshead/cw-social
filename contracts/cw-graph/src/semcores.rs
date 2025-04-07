@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Timestamp};
 use serde_json;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TypeDefinition {
-    pub id: String,
+    pub id: Option<String>,
     #[serde(rename = "type")]
     pub type_: String,
     pub from: Option<String>,
@@ -15,25 +14,29 @@ pub struct TypeDefinition {
 pub enum SemanticCore {
     Social,
     Chat,
-    Lens,
+    // Lens,
+    Project,
+    Deep
 }
 
 impl SemanticCore {
     pub fn get_types(&self) -> Vec<TypeDefinition> {
         let json_str = match self {
-            SemanticCore::Social => include_str!("../semcores/social_example.json"),
-            SemanticCore::Chat => include_str!("../semcores/chat_example.json"),
-            SemanticCore::Lens => include_str!("../semcores/lens.json"),
+            SemanticCore::Social => include_str!("../semcores/social.json"),
+            SemanticCore::Chat => include_str!("../semcores/chat.json"),
+            // SemanticCore::Lens => include_str!("../semcores/lens.json"),
+            SemanticCore::Project => include_str!("../semcores/project.json"),
+            SemanticCore::Deep => include_str!("../semcores/deep.json"),
         };
 
-        // Parse JSON string into Vec<TypeDefinition>
-        let definitions: Vec<TypeDefinition> = serde_json::from_str(json_str)
+        // Parse JSON string into RawTypeDefinition entries
+        let raw_definitions: Vec<TypeDefinition> = serde_json::from_str(json_str)
             .expect("Failed to parse semantic core JSON");
 
-        // Filter only Type definitions
-        definitions
+        // Filter only Type definitions that have an ID field
+        raw_definitions
             .into_iter()
-            .filter(|def| def.type_ == "Type")
+            .filter(|def| def.id.is_some() && def.type_ == "Type")
             .collect()
     }
 
@@ -41,7 +44,9 @@ impl SemanticCore {
         match s.to_lowercase().as_str() {
             "social" => Some(SemanticCore::Social),
             "chat" => Some(SemanticCore::Chat),
-            "lens" => Some(SemanticCore::Lens),
+            "project" => Some(SemanticCore::Project),
+            // "lens" => Some(SemanticCore::Lens),
+            "deep" => Some(SemanticCore::Deep),
             _ => None,
         }
     }
@@ -58,8 +63,8 @@ mod tests {
         assert!(!types.is_empty(), "Should load social types");
         
         // Verify some expected types
-        let has_account = types.iter().any(|t| t.id == "Account");
-        let has_post = types.iter().any(|t| t.id == "Post");
+        let has_account = types.iter().any(|t| t.id.as_ref() == Some(&"Account".to_string()));
+        let has_post = types.iter().any(|t| t.id.as_ref() == Some(&"Post".to_string()));
         assert!(has_account, "Should have Account type");
         assert!(has_post, "Should have Post type");
     }
@@ -71,8 +76,8 @@ mod tests {
         assert!(!types.is_empty(), "Should load chat types");
         
         // Verify some expected types
-        let has_chat = types.iter().any(|t| t.id == "Chat");
-        let has_message = types.iter().any(|t| t.id == "Message");
+        let has_chat = types.iter().any(|t| t.id.as_ref() == Some(&"Chat".to_string()));
+        let has_message = types.iter().any(|t| t.id.as_ref() == Some(&"Message".to_string()));
         assert!(has_chat, "Should have Chat type");
         assert!(has_message, "Should have Message type");
     }

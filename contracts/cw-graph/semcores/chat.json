@@ -1,0 +1,45 @@
+[
+  {
+    "id": "Chat",
+    "type": "Type"
+  },
+  {
+    "id": "Message",
+    "type": "Type"
+  },
+  {
+    "id": "Replies",
+    "type": "Type",
+    "from": "Chat",
+    "to": "Message"
+  },
+  {
+    "type": "Chat",
+    "value": {
+      "name": "Customer Support",
+      "description": "Support chat room for customers"
+    }
+  },
+  {
+    "type": "Message",
+    "value": {
+      "content": "How do I reset my password?"
+    }
+  },
+  {
+    "type": "Message",
+    "value": {
+      "content": "You can reset your password by clicking 'Forgot Password' on the login page"
+    }
+  },
+  {
+    "type": "Replies",
+    "from": "Chat:1",
+    "to": "Message:1"
+  },
+  {
+    "type": "Replies",
+    "from": "Chat:1",
+    "to": "Message:2"
+  }
+]

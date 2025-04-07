@@ -3,7 +3,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use crate::query::{ConfigResponse, StateResponse};
 use crate::state::CyberlinkState;
 use cosmwasm_std::Timestamp;
-use serde::{Serialize, Deserialize};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -105,5 +104,9 @@ pub enum QueryMsg {
         end_time: Option<Timestamp>,
         start_after: Option<u64>,
         limit: Option<u32>,
+    },
+    #[returns(CyberlinkState)]
+    CyberlinkByFormattedId {
+        formatted_id: String,
     },
 }

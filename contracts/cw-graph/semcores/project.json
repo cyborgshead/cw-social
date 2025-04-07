@@ -1,0 +1,296 @@
+[
+  {
+    "id": "Type",
+    "type": "Type"
+  },
+  {
+    "id": "User",
+    "type": "Type"
+  },
+  {
+    "id": "Document",
+    "type": "Type"
+  },
+  {
+    "id": "Project",
+    "type": "Type"
+  },
+  {
+    "id": "Task",
+    "type": "Type"
+  },
+  {
+    "id": "Comment",
+    "type": "Type"
+  },
+  {
+    "id": "Tag",
+    "type": "Type"
+  },
+  {
+    "id": "Owns",
+    "type": "Type",
+    "from": "User",
+    "to": "Any"
+  },
+  {
+    "id": "AuthoredBy",
+    "type": "Type",
+    "from": "Document",
+    "to": "User"
+  },
+  {
+    "id": "BelongsTo",
+    "type": "Type",
+    "from": "Task",
+    "to": "Project"
+  },
+  {
+    "id": "Dependencies",
+    "type": "Type",
+    "from": "Task",
+    "to": "Task"
+  },
+  {
+    "id": "CommentOn",
+    "type": "Type",
+    "from": "User",
+    "to": "Any"
+  },
+  {
+    "id": "TaggedWith",
+    "type": "Type",
+    "from": "Any",
+    "to": "Tag"
+  },
+  {
+    "id": "Collaborates",
+    "type": "Type",
+    "from": "User",
+    "to": "User"
+  },
+  {
+    "id": "Contains",
+    "type": "Type",
+    "from": "Document",
+    "to": "Any"
+  },
+  {
+    "id": "ReferencesExternal",
+    "type": "Type",
+    "from": "Any",
+    "to": "Any"
+  },
+  {
+    "type": "User",
+    "value": {
+      "Username": "alice",
+      "email": "alice@example.com"
+    }
+  },
+  {
+    "type": "User",
+    "value": {
+      "Username": "bob",
+      "email": "bob@example.com"
+    }
+  },
+  {
+    "type": "User",
+    "value": {
+      "Username": "carol",
+      "email": "carol@example.com"
+    }
+  },
+  {
+    "type": "Project",
+    "value": {
+      "name": "Website Redesign",
+      "deadline": "2025-04-15"
+    }
+  },
+  {
+    "type": "Project",
+    "value": {
+      "name": "Mobile App Development",
+      "deadline": "2025-06-30"
+    }
+  },
+  {
+    "type": "Document",
+    "value": {
+      "title": "Project Requirements",
+      "content": "This document outlines the requirements for the project..."
+    }
+  },
+  {
+    "type": "Document",
+    "value": {
+      "title": "Design Specifications",
+      "content": "The design will follow the principles of..."
+    }
+  },
+  {
+    "type": "Task",
+    "value": {
+      "description": "Create wireframes",
+      "status": "completed"
+    }
+  },
+  {
+    "type": "Task",
+    "value": {
+      "description": "Implement frontend",
+      "status": "in_progress"
+    }
+  },
+  {
+    "type": "Task",
+    "value": {
+      "description": "Setup database",
+      "status": "planned"
+    }
+  },
+  {
+    "type": "Comment",
+    "value": {
+      "text": "This looks great!",
+      "timestamp": "2025-03-01T14:22:00Z"
+    }
+  },
+  {
+    "type": "Comment",
+    "value": {
+      "text": "I think we should reconsider this approach.",
+      "timestamp": "2025-03-02T09:15:00Z"
+    }
+  },
+  {
+    "type": "Tag",
+    "value": {
+      "name": "urgent"
+    }
+  },
+  {
+    "type": "Tag",
+    "value": {
+      "name": "frontend"
+    }
+  },
+  {
+    "type": "Tag",
+    "value": {
+      "name": "backend"
+    }
+  },
+  {
+    "type": "Owns",
+    "from": "User:1",
+    "to": "Project:1"
+  },
+  {
+    "type": "Owns",
+    "from": "User:2",
+    "to": "Project:2"
+  },
+  {
+    "type": "AuthoredBy",
+    "from": "Document:1",
+    "to": "User:1"
+  },
+  {
+    "type": "BelongsTo",
+    "from": "Task:1",
+    "to": "Project:1"
+  },
+  {
+    "type": "BelongsTo",
+    "from": "Task:2",
+    "to": "Project:1"
+  },
+  {
+    "type": "BelongsTo",
+    "from": "Task:3",
+    "to": "Project:2"
+  },
+  {
+    "type": "Dependencies",
+    "from": "Task:2",
+    "to": "Task:1"
+  },
+  {
+    "type": "CommentOn",
+    "from": "User:3",
+    "to": "Document:1"
+  },
+  {
+    "type": "CommentOn",
+    "from": "User:2",
+    "to": "Task:2"
+  },
+  {
+    "type": "TaggedWith",
+    "from": "Task:1",
+    "to": "Tag:2"
+  },
+  {
+    "type": "TaggedWith",
+    "from": "Task:3",
+    "to": "Tag:3"
+  },
+  {
+    "type": "TaggedWith",
+    "from": "Document:2",
+    "to": "Tag:2"
+  },
+  {
+    "type": "Collaborates",
+    "from": "User:1",
+    "to": "User:2"
+  },
+  {
+    "type": "Contains",
+    "from": "Document:1",
+    "to": "Task:1"
+  },
+  {
+    "type": "ReferencesExternal",
+    "from": "Document:2",
+    "to": "Task:3"
+  },
+  {
+    "type": "Collaborates",
+    "from": "User:2",
+    "to": "User:1"
+  },
+  {
+    "type": "Owns",
+    "from": "User:3",
+    "to": "Document:2"
+  },
+  {
+    "type": "Contains",
+    "from": "Document:2",
+    "to": "Comment:2"
+  },
+  {
+    "type": "Dependencies",
+    "from": "Task:3",
+    "to": "Task:3"
+  },
+  {
+    "type": "TaggedWith",
+    "from": "Task:2",
+    "to": "Tag:1"
+  },
+  {
+    "type": "TaggedWith",
+    "from": "Task:2",
+    "to": "Tag:2"
+  },
+  {
+    "type": "Owns",
+    "from": "User:1",
+    "to": "Task:2"
+  }
+]

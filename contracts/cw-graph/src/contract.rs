@@ -1,15 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, StdResult, MessageInfo, Reply, Api, Addr, Empty, Response, to_json_binary};
-use cw2::{get_contract_version, set_contract_version};
+use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cw2::set_contract_version;
 
 use crate::error::ContractError;
+use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG, CyberlinkState, ID, NAMED_CYBERLINKS, cyberlinks};
-use crate::execute::{execute_create_cyberlink, execute_delete_cyberlink, execute_update_cyberlink, execute_update_admins, execute_update_executors, execute_create_cyberlinks, execute_create_named_cyberlink};
-use crate::query::{query_config, query_cyberlinks, query_cyberlinks_by_ids, query_id, query_last_id, query_named_cyberlinks, query_state, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any};
-use semver::Version;
-use crate::semcores::{SemanticCore, TypeDefinition};
+use crate::query::{query_config, query_cyberlink_by_formatted_id, query_cyberlinks, query_cyberlinks_by_ids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_id, query_last_id, query_named_cyberlinks, query_state};
+use crate::semcores::SemanticCore;
+use crate::state::{cyberlinks, Config, CyberlinkState, CONFIG, ID, NAMED_CYBERLINKS};
 
 const CONTRACT_NAME: &str = "crates.io:cw-graph";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -56,17 +55,9 @@ fn create_base_types(deps: DepsMut, env: &Env, info: &MessageInfo) -> Result<(),
         owner: info.sender.clone(),
         created_at: env.block.time,
         updated_at: None,
+        formatted_id: Some("".to_string()),
     })?;
-    NAMED_CYBERLINKS.save(deps.storage,
-                          "Type", &CyberlinkState {
-            type_: "Type".to_string(),
-            from: "Any".to_string(),
-            to: "Any".to_string(),
-            value: "".to_string(),
-            owner: info.sender.clone(),
-            created_at: env.block.time,
-            updated_at: None,
-        })?;
+    NAMED_CYBERLINKS.save(deps.storage, "Type", &id)?;
 
     // Create Any type
     let id = ID.load(deps.storage)? + 1;
@@ -79,18 +70,9 @@ fn create_base_types(deps: DepsMut, env: &Env, info: &MessageInfo) -> Result<(),
         owner: info.sender.clone(),
         created_at: env.block.time,
         updated_at: None,
+        formatted_id: Some("".to_string()),
     })?;
-    NAMED_CYBERLINKS.save(deps.storage,
-                          "Any", &CyberlinkState {
-            type_: "Type".to_string(),
-            from: "Null".to_string(),
-            to: "Null".to_string(),
-            value: "".to_string(),
-            owner: info.sender.clone(),
-            created_at: env.block.time,
-            updated_at: None,
-        })?;
-    
+    NAMED_CYBERLINKS.save(deps.storage, "Any", &id)?;
     Ok(())
 }
 
@@ -98,21 +80,25 @@ fn load_semantic_core(deps: DepsMut, env: &Env, info: &MessageInfo, core: Semant
     let types = core.get_types();
     
     for type_def in types {
-        let id = ID.load(deps.storage)? + 1;
-        ID.save(deps.storage, &id)?;
-        
-        let cyberlink_state = CyberlinkState {
-            type_: type_def.type_,
-            from: type_def.from.unwrap_or_else(|| "Any".to_string()),
-            to: type_def.to.unwrap_or_else(|| "Any".to_string()),
-            value: type_def.value.map_or_else(String::new, |v| v.to_string()),
-            owner: info.sender.clone(),
-            created_at: env.block.time,
-            updated_at: None,
-        };
+        // Skip entries without an ID (already filtered in get_types, but just to be safe)
+        if let Some(id_value) = &type_def.id {
+            let id = ID.load(deps.storage)? + 1;
+            ID.save(deps.storage, &id)?;
+            
+            let cyberlink_state = CyberlinkState {
+                type_: type_def.type_,
+                from: type_def.from.unwrap_or_else(|| "Any".to_string()),
+                to: type_def.to.unwrap_or_else(|| "Any".to_string()),
+                value: type_def.value.map_or_else(String::new, |v| v.to_string()),
+                owner: info.sender.clone(),
+                created_at: env.block.time,
+                updated_at: None,
+                formatted_id: Some("".to_string()),
+            };
 
-        cyberlinks().save(deps.storage, id, &cyberlink_state)?;
-        NAMED_CYBERLINKS.save(deps.storage, &type_def.id, &cyberlink_state)?;
+            cyberlinks().save(deps.storage, id, &cyberlink_state)?;
+            NAMED_CYBERLINKS.save(deps.storage, id_value, &id)?;
+        }
     }
     
     Ok(())
@@ -147,6 +133,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::DebugState {} => to_json_binary(&query_state(deps)?),
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::Cyberlink { id } => to_json_binary(&query_id(deps, id)?),
+        QueryMsg::CyberlinkByFormattedId { formatted_id } => to_json_binary(&query_cyberlink_by_formatted_id(deps, formatted_id)?),
         QueryMsg::Cyberlinks { start_after, limit} => to_json_binary(&query_cyberlinks(deps, start_after, limit)?),
         QueryMsg::CyberlinksByIds { ids } => to_json_binary(&query_cyberlinks_by_ids(deps, ids)?),
         QueryMsg::NamedCyberlinks { start_after, limit } => to_json_binary(&query_named_cyberlinks(deps, start_after, limit)?),
