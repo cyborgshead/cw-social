@@ -106,4 +106,8 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    #[returns(CyberlinkState)]
+    CyberlinkByFormattedId {
+        formatted_id: String,
+    },
 }

@@ -30,7 +30,7 @@
     {
       "id": "Comments",
       "type": "Type",
-      "from": "Account",
+      "from": "Comment",
       "to": "Post"
     },
     {
@@ -40,7 +40,16 @@
       "to": "Post"
     },
     {
-      "id": "account:alice",
+      "id": "Reaction",
+      "type": "Type"
+    },
+    {
+      "id": "ReactsTo",
+      "type": "Type",
+      "from": "Reaction",
+      "to": "Any"
+    },
+    {
       "type": "Account",
       "value": {
         "handle": "alice",
@@ -49,7 +58,6 @@
       }
     },
     {
-      "id": "account:bob",
       "type": "Account",
       "value": {
         "handle": "bob",
@@ -58,74 +66,44 @@
       }
     },
     {
-      "id": "post:1",
       "type": "Post",
       "value": {
-        "content": "Hello Web3 World!",
-        "timestamp": "2024-03-20T10:00:00Z"
+        "content": "Hello Web3 World!"
       }
     },
     {
-      "id": "comment:1",
       "type": "Comment",
       "value": {
-        "content": "Great post!",
-        "timestamp": "2024-03-20T10:05:00Z"
+        "content": "Great post!"
       }
     },
     {
-      "id": "repost:1",
       "type": "Repost",
       "value": {
         "timestamp": "2024-03-20T10:10:00Z"
       }
     },
-    
     {
-      "id": "follows:1",
       "type": "Follows",
-      "from": "account:bob",
-      "to": "account:alice",
-      "value": {
-        "timestamp": "2024-03-20T09:00:00Z"
-      }
+      "from": "Account:2",
+      "to": "Account:1"
     },
     {
-      "id": "posts:1",
       "type": "Posts",
-      "from": "account:alice",
-      "to": "post:1"
+      "from": "Account:1",
+      "to": "Post:1"
     },
     {
-      "id": "comments:1",
       "type": "Comments",
-      "from": "account:bob",
-      "to": "post:1",
-      "value": {
-        "commentId": "comment:1"
-      }
+      "from": "Comment:1",
+      "to": "Post:1"
     },
     {
-      "id": "reposts:1",
       "type": "Reposts",
-      "from": "account:bob",
-      "to": "post:1",
-      "value": {
-        "repostId": "repost:1"
-      }
+      "from": "Account:2",
+      "to": "Post:1"
     },
     {
-      "id": "Reaction",
-      "type": "Type"
-    },
-    {
-      "id": "ReactsTo",
-      "type": "Type",
-      "from": "Account",
-      "to": "Any"
-    },
-    {
-      "id": "reaction:thumbs_up",
       "type": "Reaction",
       "value": {
         "emoji": "👍",
@@ -134,7 +112,6 @@
       }
     },
     {
-      "id": "reaction:thumbs_down",
       "type": "Reaction",
       "value": {
         "emoji": "👎",
@@ -143,23 +120,13 @@
       }
     },
     {
-      "id": "reacts:1",
       "type": "ReactsTo",
-      "from": "account:bob",
-      "to": "post:1",
-      "value": {
-        "reaction": "reaction:thumbs_up",
-        "timestamp": "2024-03-20T10:01:00Z"
-      }
+      "from": "Reaction:1",
+      "to": "Post:1"
     },
     {
-      "id": "reacts:2",
       "type": "ReactsTo",
-      "from": "account:alice",
-      "to": "comment:1",
-      "value": {
-        "reaction": "reaction:thumbs_down",
-        "timestamp": "2024-03-20T10:06:00Z"
-      }
+      "from": "Reaction:2",
+      "to": "Comment:1"
     }
   ]

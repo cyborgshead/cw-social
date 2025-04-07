@@ -260,7 +260,6 @@
     }
   },
   {
-    "id": "account:0x1",
     "type": "Account",
     "value": {
       "owner": "0xOwnerAddress",
@@ -270,7 +269,6 @@
     }
   },
   {
-    "id": "account:0x2",
     "type": "Account",
     "value": {
       "owner": "0xOwner2Address",
@@ -280,7 +278,6 @@
     }
   },
   {
-    "id": "app:socialapp",
     "type": "App",
     "value": {
       "name": "SocialApp",
@@ -289,7 +286,6 @@
     }
   },
   {
-    "id": "feed:global",
     "type": "Feed",
     "value": {
       "name": "Global Feed",
@@ -297,7 +293,6 @@
     }
   },
   {
-    "id": "namespace:social",
     "type": "Namespace",
     "value": {
       "name": "social",
@@ -313,7 +308,6 @@
     }
   },
   {
-    "id": "graph:social",
     "type": "Graph",
     "value": {
       "name": "SocialApp Graph",
@@ -321,7 +315,6 @@
     }
   },
   {
-    "id": "group:developers",
     "type": "Group",
     "value": {
       "name": "Developers",
@@ -330,7 +323,6 @@
     }
   },
   {
-    "id": "post:0x1",
     "type": "Post",
     "value": {
       "contentURI": "ipfs://QmContent1",
@@ -340,7 +332,6 @@
     }
   },
   {
-    "id": "comment:0x1",
     "type": "Comment",
     "value": {
       "contentURI": "ipfs://QmComment1",
@@ -349,17 +340,15 @@
     }
   },
   {
-    "id": "mirror:0x1",
     "type": "Mirror",
     "value": {
       "timestamp": "2025-03-15T12:30:00Z"
     }
   },
   {
-    "id": "rule:tokenhold",
     "type": "FollowRule",
-    "from": "account:0x1",
-    "to": "account:0x2",
+    "from": "Account",
+    "to": "Account:2",
     "value": {
         "tokenAddress": "0xTokenAddress",
         "minAmount": "10",
@@ -370,18 +359,17 @@
   {
     "id": "action:collectpaid",
     "type": "CollectAction",
-    "from": "account:0x1",
-    "to": "post:0x1",
+    "from": "Account",
+    "to": "Post:1",
     "value": {
         "price": "0.1",
         "currency": "0xCurrencyAddress",
-        "recipient": "account:0x1",
+        "recipient": "Account:1",
         "collectLimit": 100,
         "expiresAt": "2025-12-31T23:59:59Z"
     }
   },
   {
-    "id": "token:dev",
     "type": "Token",
     "value": {
       "name": "Developer Token",
@@ -390,118 +378,97 @@
     }
   },
   {
-    "id": "follows:0x1",
     "type": "Follows",
-    "from": "account:0x1",
-    "to": "account:0x2",
+    "from": "Account:1",
+    "to": "Account:2",
     "value": {
-      "graph": "graph:social",
-      "timestamp": "2025-03-10T14:20:00Z"
+      "graph": "Graph:1"
     }
   },
   {
-    "id": "createspost:0x1",
     "type": "CreatesPost",
-    "from": "account:0x1",
-    "to": "post:0x1"
+    "from": "Account:1",
+    "to": "Post:1"
   },
   {
-    "id": "commentson:0x1",
     "type": "CommentsOn",
-    "from": "comment:0x1",
-    "to": "post:0x1"
+    "from": "Comment:1",
+    "to": "Post:1"
   },
   {
-    "id": "createscomment:0x2",
     "type": "CreatesComment",
-    "from": "account:0x2",
-    "to": "comment:0x1"
+    "from": "Account:2",
+    "to": "Comment:1"
   },
   {
-    "id": "mirrorspost:0x1",
     "type": "MirrorsPost",
-    "from": "mirror:0x1",
-    "to": "post:0x1"
+    "from": "Mirror:1",
+    "to": "Post:1"
   },
   {
-    "id": "createsmirror:0x3",
     "type": "CreatesMirror",
-    "from": "account:0x2",
-    "to": "mirror:0x1"
+    "from": "Account:2",
+    "to": "Mirror:1"
   },
   {
-    "id": "belongsto:0x1",
     "type": "BelongsTo",
-    "from": "post:0x1",
-    "to": "feed:global"
+    "from": "Post:1",
+    "to": "Feed:1"
   },
   {
-    "id": "hasusername:0x1",
     "type": "HasUsername",
-    "from": "account:0x1",
+    "from": "Account:1",
     "to": "username:alice.social"
   },
   {
-    "id": "innamespace:0x1",
     "type": "InNamespace",
     "from": "username:alice.social",
-    "to": "namespace:social"
+    "to": "Namespace:1"
   },
   {
-    "id": "memberof:0x1",
     "type": "MemberOf",
-    "from": "account:0x1",
-    "to": "group:developers",
-    "value": {
-      "joinedAt": "2025-03-05T08:45:00Z"
-    }
+    "from": "Account:1",
+    "to": "Group:1"
   },
   {
-    "id": "adminof:0x1",
     "type": "AdminOf",
-    "from": "account:0x1",
-    "to": "group:developers",
+    "from": "Account:1",
+    "to": "Group:1",
     "value": {
       "permissions": ["manage_members", "post", "edit_metadata"]
     }
   },
   {
-    "id": "appliesrule:0x1",
     "type": "AppliesRule",
     "from": "Any",
-    "to": "rule:tokenhold"
+    "to": "Rule:1"
   },
   {
-    "id": "appliesaction:0x1",
     "type": "AppliesAction",
     "from": "Any",
     "to": "action:collectpaid"
   },
   {
-    "id": "usesgraph:0x1",
     "type": "UsesGraph",
-    "from": "app:socialapp",
-    "to": "graph:social"
+    "from": "App:1",
+    "to": "Graph:1"
   },
   {
-    "id": "usesfeed:0x1",
     "type": "UsesFeed",
-    "from": "app:socialapp",
-    "to": "feed:global",
+    "from": "App:1",
+    "to": "Feed:1",
     "value": {
       "isDefault": true
     }
   },
   {
-    "id": "usesnamespace:0x1",
     "type": "UsesNamespace",
-    "from": "app:socialapp",
-    "to": "namespace:social"
+    "from": "App:1",
+    "to": "Namespace:1"
   },
   {
-    "id": "hastoken:0x1",
     "type": "HasToken",
-    "from": "group:developers",
-    "to": "token:dev"
+    "from": "Group:1",
+    "to": "Token:1"
   }
 ]

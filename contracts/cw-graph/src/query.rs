@@ -46,7 +46,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let named_cyberlinks = NAMED_CYBERLINKS
         .range(deps.storage, None, None, Order::Ascending)
         .map(|i| i.unwrap())
-        .collect::<Vec<(String, CyberlinkState)>>();
+        .collect::<Vec<(String, u64)>>();
 
     Ok(StateResponse {
         cyberlinks,
@@ -91,7 +91,7 @@ pub fn query_cyberlinks_by_owner(deps: Deps, owner: String, start_after: Option<
     cyberlinks
 }
 
-pub fn query_named_cyberlinks(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, CyberlinkState)>> {
+pub fn query_named_cyberlinks(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, u64)>> {
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
@@ -99,7 +99,7 @@ pub fn query_named_cyberlinks(deps: Deps, start_after: Option<String>, limit: Op
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|i| i.unwrap())
-        .collect::<Vec<(String, CyberlinkState)>>();
+        .collect::<Vec<(String, u64)>>();
     Ok(cyberlinks)
 }
 
@@ -220,8 +220,20 @@ pub fn query_cyberlinks_by_owner_time_any(
     Ok(result)
 }
 
+pub fn query_cyberlink_by_formatted_id(deps: Deps, formatted_id: String) -> StdResult<CyberlinkState> {
+    // First try to load directly from NAMED_CYBERLINKS
+    let global_id = NAMED_CYBERLINKS.load(deps.storage, &formatted_id)?;
+    if DELETED_IDS.has(deps.storage, global_id) {
+        return Err(StdError::not_found("cyberlink has been deleted"));
+    }
+    
+    let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    
+    Ok(cyberlink_state)
+}
+
 #[cw_serde]
 pub struct StateResponse {
     pub cyberlinks: Vec<(u64, CyberlinkState)>,
-    pub named_cyberlinks: Vec<(String, CyberlinkState)>
+    pub named_cyberlinks: Vec<(String, u64)>
 }

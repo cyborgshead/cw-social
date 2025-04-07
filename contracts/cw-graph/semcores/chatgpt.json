@@ -1,0 +1,159 @@
+[
+  {
+    "id": "Thread",
+    "type": "Type"
+  },
+  {
+    "id": "Message",
+    "type": "Type"
+  },
+  {
+    "id": "File",
+    "type": "Type"
+  },
+  {
+    "id": "Participant",
+    "type": "Type"
+  },
+  {
+    "id": "ThreadMessage",
+    "type": "Type",
+    "from": "Thread",
+    "to": "Message"
+  },
+  {
+    "id": "MessageReply",
+    "type": "Type",
+    "from": "Message",
+    "to": "Message"
+  },
+  {
+    "id": "MessageAuthor",
+    "type": "Type",
+    "from": "Message",
+    "to": "Participant"
+  },
+  {
+    "id": "MessageFile",
+    "type": "Type",
+    "from": "Message",
+    "to": "File"
+  },
+  {
+    "id": "ThreadParticipant",
+    "type": "Type",
+    "from": "Thread",
+    "to": "Participant"
+  },
+  {
+    "type": "Thread",
+    "value": {
+      "title": "Code Review Discussion",
+      "created_at": "2024-03-31T10:00:00Z",
+      "status": "active",
+      "model_config": {
+        "model_name": "gpt-4",
+        "temperature": 0.7,
+        "max_tokens": 2000
+      }
+    }
+  },
+  {
+    "type": "Message",
+    "value": {
+      "content": "Can you review this code snippet?",
+      "role": "user",
+      "embedding": [0.1, 0.2, 0.3],
+      "metadata": {
+        "tokens": 8,
+        "model_name": "gpt-4"
+      }
+    }
+  },
+  {
+    "type": "Message",
+    "value": {
+      "content": "I'll help review your code.",
+      "role": "assistant",
+      "embedding": [0.2, 0.3, 0.4],
+      "metadata": {
+        "tokens": 6,
+        "model_name": "gpt-4"
+      }
+    }
+  },
+  {
+    "type": "File",
+    "value": {
+      "name": "code_sample.py",
+      "mime_type": "text/x-python",
+      "size": 1024,
+      "hash": "sha256:abc123",
+      "embedding": [0.4, 0.5, 0.6]
+    }
+  },
+  {
+    "type": "Participant",
+    "value": {
+      "name": "User",
+      "type": "human",
+      "metadata": {
+        "user_id": "user123"
+      }
+    }
+  },
+  {
+    "type": "Participant",
+    "value": {
+      "name": "AI Assistant",
+      "type": "ai",
+      "metadata": {
+        "model_type": "gpt-4",
+        "capabilities": ["code_review", "text_generation"]
+      }
+    }
+  },
+  {
+    "type": "ThreadMessage",
+    "from": "Thread:1",
+    "to": "Message:1"
+  },
+  {
+    "type": "ThreadMessage",
+    "from": "Thread:1",
+    "to": "Message:2"
+  },
+  {
+    "type": "MessageReply",
+    "from": "Message:2",
+    "to": "Message:1"
+  },
+  {
+    "type": "MessageAuthor",
+    "from": "Message:1",
+    "to": "Participant:1"
+  },
+  {
+    "type": "MessageAuthor",
+    "from": "Message:2",
+    "to": "Participant:2"
+  },
+  {
+    "type": "MessageFile",
+    "from": "Message:1",
+    "to": "File:1",
+    "value": {
+      "attachment_type": "code_snippet"
+    }
+  },
+  {
+    "type": "ThreadParticipant",
+    "from": "Thread:1",
+    "to": "Participant:1"
+  },
+  {
+    "type": "ThreadParticipant",
+    "from": "Thread:1",
+    "to": "Participant:1"
+  }
+]

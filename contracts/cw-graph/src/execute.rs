@@ -2,7 +2,7 @@ use cosmwasm_std::{attr, Deps, DepsMut, Env, MessageInfo, Order, Response, StdRe
 use cosmwasm_std::Order::Ascending;
 use cw_storage_plus::Bound;
 use crate::error::ContractError;
-use crate::state::{CONFIG, CyberlinkState, ID, DELETED_IDS, NAMED_CYBERLINKS, cyberlinks};
+use crate::state::{CONFIG, CyberlinkState, ID, DELETED_IDS, NAMED_CYBERLINKS, TYPE_IDS, cyberlinks};
 use crate::contract::map_validate;
 use crate::msg::Cyberlink;
 
@@ -21,51 +21,55 @@ fn validate_cyberlink(
         });
     }
 
-    let (mut dtype_, mut dfrom, mut dto): (Option<CyberlinkState>, Option<CyberlinkState>, Option<CyberlinkState>) = (None, None, None);
+    let (mut dfrom, mut dto): (Option<CyberlinkState>, Option<CyberlinkState>) = (None, None);
 
-    dtype_ = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.type_.as_str())?;
-    if dtype_.is_none() {
+    let dtype_id = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.type_.as_str())?;
+    if dtype_id.is_none() {
         return Err(ContractError::TypeNotExists { type_: cyberlink.type_.clone() });
     }
+    let dtype = cyberlinks().load(deps.storage, dtype_id.unwrap()).unwrap();
+
     if cyberlink.from.is_some() {
-        dfrom = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().from.unwrap().as_str())?;
-        if dfrom.is_none() {
+        let dfrom_id = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().from.unwrap().as_str())?;
+        if dfrom_id.is_none() {
             return Err(ContractError::FromNotExists { from: cyberlink.from.unwrap_or_else(|| "_".to_string()) });
         }
+        dfrom = cyberlinks().may_load(deps.storage, dfrom_id.unwrap()).unwrap();
     }
     if cyberlink.to.is_some() {
-        dto = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().to.unwrap().as_str())?;
-        if dto.is_none() {
+        let dto_id = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().to.unwrap().as_str())?;
+        if dto_id.is_none() {
             return Err(ContractError::ToNotExists { to: cyberlink.to.unwrap_or_else(|| "_".to_string()) });
         }
+        dto = cyberlinks().may_load(deps.storage, dto_id.unwrap()).unwrap();
     }
 
     // Additional validation for type conflicts
     if let (Some(ref from), Some(ref to)) = (&cyberlink.from, &cyberlink.to) {
-        if dtype_.clone().unwrap().from.ne(&"Any") && dtype_.clone().unwrap().from.ne(&dfrom.clone().unwrap().type_) {
+        if dtype.clone().from.ne(&"Any") && dtype.clone().from.ne(&dfrom.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
                 id: id.unwrap_or_else(|| "_".to_string()),
                 type_: cyberlink.clone().type_,
                 from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
                 to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
                 expected_type: cyberlink.clone().type_,
-                expected_from: dtype_.clone().unwrap().from,
-                expected_to: dtype_.clone().unwrap().to,
+                expected_from: dtype.clone().from,
+                expected_to: dtype.clone().to,
                 received_type: cyberlink.clone().type_,
                 received_from: dfrom.clone().unwrap().type_,
                 received_to: dto.clone().unwrap().type_,
             });
         }
 
-        if dtype_.clone().unwrap().to.ne(&"Any") && dtype_.clone().unwrap().to.ne(&dto.clone().unwrap().type_) {
+        if dtype.to.ne(&"Any") && dtype.to.ne(&dto.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
                 id: id.unwrap_or_else(|| "_".to_string()),
                 type_: cyberlink.clone().type_,
                 from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
                 to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
                 expected_type: cyberlink.clone().type_,
-                expected_from: dtype_.clone().unwrap().from,
-                expected_to: dtype_.clone().unwrap().to,
+                expected_from: dtype.from,
+                expected_to: dtype.to,
                 received_type: cyberlink.clone().type_,
                 received_from: dfrom.clone().unwrap().type_,
                 received_to: dto.clone().unwrap().type_,
@@ -80,11 +84,25 @@ fn create_cyberlink(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    name: Option<String>,
     cyberlink: Cyberlink
-) -> Result<u64, ContractError> {
-    // Get next ID
+) -> Result<(u64, String), ContractError> {
+    // Get next global ID for internal indexing
     let id = ID.load(deps.storage)? + 1;
     ID.save(deps.storage, &id)?;
+
+    let mut formatted_id: String;
+    if name.is_none() {
+        // Get and increment the type-specific ID
+        let type_id = TYPE_IDS.may_load(deps.storage, cyberlink.type_.as_str())?.unwrap_or(0) + 1;
+        TYPE_IDS.save(deps.storage, cyberlink.type_.as_str(), &type_id)?;
+
+        // Generate the formatted ID string (e.g., "post:42")
+        formatted_id = format!("{}:{}", cyberlink.type_, type_id);
+    } else {
+        formatted_id = name.unwrap();
+    }
+
 
     // Save new Cyberlink
     let cyberlink_state = CyberlinkState {
@@ -95,13 +113,16 @@ fn create_cyberlink(
         owner: info.sender.clone(),
         created_at: env.block.time,
         updated_at: None,
+        formatted_id: Some(formatted_id.clone()),
     };
 
-    // Save the cyberlink using IndexedMap
-    // This will automatically update all indexes
+    // Also save the cyberlink with its string ID for direct access
+    NAMED_CYBERLINKS.save(deps.storage, formatted_id.as_str(), &id)?;
+
+    // Save the cyberlink using IndexedMap with numeric ID for efficient indexing
     cyberlinks().save(deps.storage, id, &cyberlink_state)?;
 
-    Ok(id)
+    Ok((id, formatted_id))
 }
 
 pub fn execute_create_named_cyberlink(
@@ -118,26 +139,15 @@ pub fn execute_create_named_cyberlink(
     }
 
     // Validate the cyberlink
-    validate_cyberlink(deps.as_ref(), Some(name.clone()), cyberlink.clone())?;
+    validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
 
-    // Save new Cyberlink
-    // let type_ = cyberlink.clone().type_;
-    let cyberlink_state = CyberlinkState {
-        type_: cyberlink.clone().type_,
-        from: cyberlink.clone().from.unwrap_or_else(|| "Any".to_string()),
-        to: cyberlink.clone().to.unwrap_or_else(|| "Any".to_string()),
-        value: cyberlink.value.unwrap_or_default(),
-        owner: info.sender.clone(),
-        created_at: env.block.time,
-        updated_at: None,
-    };
-
-    // Save the named cyberlink
-    NAMED_CYBERLINKS.save(deps.storage, name.as_str(), &cyberlink_state)?;
+    // Create the cyberlink
+    let (numeric_id, formatted_id) = create_cyberlink(deps, env, info, Some(name), cyberlink.clone())?;
 
     Ok(Response::new()
-        .add_attribute("action", "create_named_cyberlink")
-        .add_attribute("name", name)
+        .add_attribute("action", "create_cyberlink")
+        .add_attribute("numeric_id", numeric_id.to_string())
+        .add_attribute("formatted_id", formatted_id)
         .add_attribute("type", cyberlink.type_)
     )
 }
@@ -158,11 +168,12 @@ pub fn execute_create_cyberlink(
     validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
 
     // Create the cyberlink
-    let id = create_cyberlink(deps, env, info, cyberlink.clone())?;
+    let (numeric_id, formatted_id) = create_cyberlink(deps, env, info, None, cyberlink.clone())?;
 
     Ok(Response::new()
         .add_attribute("action", "create_cyberlink")
-        .add_attribute("id", id.to_string())
+        .add_attribute("numeric_id", numeric_id.to_string())
+        .add_attribute("formatted_id", formatted_id)
         .add_attribute("type", cyberlink.type_)
     )
 }
@@ -179,19 +190,24 @@ pub fn execute_create_cyberlinks(
         return Err(ContractError::Unauthorized {});
     }
 
-    let mut ids = Vec::with_capacity(cyberlinks.len());
+    let mut numeric_ids = Vec::with_capacity(cyberlinks.len());
+    let mut formatted_ids = Vec::with_capacity(cyberlinks.len());
+    
     for cyberlink in cyberlinks {
         // Validate the cyberlink
         validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
 
         // Create the cyberlink
-        let id = create_cyberlink(deps.branch(), env.clone(), info.clone(), cyberlink)?;
-        ids.push(id);
+        let (numeric_id, formatted_id) = create_cyberlink(deps.branch(), env.clone(), info.clone(), None, cyberlink)?;
+        numeric_ids.push(numeric_id);
+        formatted_ids.push(formatted_id);
     }
 
     Ok(Response::new()
         .add_attribute("action", "create_cyberlinks")
-        .add_attribute("count", ids.len().to_string())
+        .add_attribute("count", numeric_ids.len().to_string())
+        .add_attribute("numeric_ids", numeric_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(","))
+        .add_attribute("formatted_ids", formatted_ids.join(","))
     )
 }
 
@@ -216,23 +232,31 @@ pub fn execute_update_cyberlink(
         return Err(ContractError::Unauthorized {});
     }
 
+    // Ensure type is not changed
+    if cyberlink.type_ != cyberlink_state.type_ {
+        return Err(ContractError::CannotChangeType {
+            id: id,
+            original_type: cyberlink_state.type_.clone(),
+            new_type: cyberlink.type_.clone(),
+        });
+    }
+
     // Validate the cyberlink
     validate_cyberlink(deps.as_ref(), Some(id.to_string()), cyberlink.clone())?;
-
+    
     // Update the cyberlink
-    cyberlink_state.type_ = cyberlink.type_.clone();
     cyberlink_state.from = cyberlink.from.unwrap_or_else(|| "Any".to_string());
     cyberlink_state.to = cyberlink.to.unwrap_or_else(|| "Any".to_string());
     cyberlink_state.value = cyberlink.value.unwrap_or_default();
     cyberlink_state.updated_at = Some(env.block.time);
+    // Keep the same formatted_id (we don't change this since we don't change the type)
 
-    // Save the updated cyberlink
-    // This will automatically update all indexes
+    // Save the updated cyberlink to the IndexedMap
     cyberlinks().save(deps.storage, id, &cyberlink_state)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_cyberlink")
-        .add_attribute("id", id.to_string())
+        .add_attribute("numeric_id", id.to_string())
     )
 }
 
@@ -256,16 +280,15 @@ pub fn execute_delete_cyberlink(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Mark the cyberlink as deleted
+    // Mark the cyberlink as deleted - we do not remove the formatted ID from NAMED_CYBERLINKS
     DELETED_IDS.save(deps.storage, id.u64(), &true)?;
 
     // Remove the cyberlink from the IndexedMap
-    // This will automatically remove all indexes
     cyberlinks().remove(deps.storage, id.u64())?;
 
     Ok(Response::new()
         .add_attribute("action", "delete_cyberlink")
-        .add_attribute("id", id.to_string())
+        .add_attribute("numeric_id", id.to_string())
     )
 }
 

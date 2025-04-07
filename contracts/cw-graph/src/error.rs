@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("Deleted cyberlink: {id}")]
-    DeletedCyberlink { id: Uint64 },
+    DeletedCyberlink { id: String },
 
     #[error("Particular links is not allowed id: {id}, from: {from}, to: {to}, type: {type_}")]
     InvalidCyberlink {id: Uint64, from: String, to: String, type_: String},
@@ -27,6 +27,9 @@ pub enum ContractError {
         expected_type: String, expected_from: String, expected_to: String,
         received_type: String, received_from: String, received_to: String
     },
+
+    #[error("Cannot change cyberlink type: ID {id} from {original_type} to {new_type}")]
+    CannotChangeType { id: u64, original_type: String, new_type: String },
 
     #[error("{0}")]
     Std(#[from] StdError),
