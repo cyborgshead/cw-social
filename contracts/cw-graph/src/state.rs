@@ -82,7 +82,7 @@ pub fn cyberlinks<'a>() -> IndexedMap<u64, CyberlinkState, CyberlinkIndices<'a>>
             "cyberlinks__updated_at",
         ),
         formatted_id: MultiIndex::new(
-            |_pk, d: &CyberlinkState| d.formatted_id.clone().unwrap_or_default(),
+            |pk, d: &CyberlinkState| d.formatted_id.clone().unwrap_or_else(|| format!("root:{}-{:?}", d.owner, pk)),
             CYBERLINKS_KEY,
             "cyberlinks__formatted_id",
         ),
