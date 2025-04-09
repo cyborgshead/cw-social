@@ -16,7 +16,8 @@ pub enum SemanticCore {
     Chat,
     // Lens,
     Project,
-    Deep
+    Deep,
+    ChatGPT,
 }
 
 impl SemanticCore {
@@ -27,6 +28,7 @@ impl SemanticCore {
             // SemanticCore::Lens => include_str!("../semcores/lens.json"),
             SemanticCore::Project => include_str!("../semcores/project.json"),
             SemanticCore::Deep => include_str!("../semcores/deep.json"),
+            SemanticCore::ChatGPT => include_str!("../semcores/chatgpt.json"),
         };
 
         // Parse JSON string into RawTypeDefinition entries
@@ -47,6 +49,7 @@ impl SemanticCore {
             "project" => Some(SemanticCore::Project),
             // "lens" => Some(SemanticCore::Lens),
             "deep" => Some(SemanticCore::Deep),
+            "chatgpt" => Some(SemanticCore::ChatGPT),
             _ => None,
         }
     }
