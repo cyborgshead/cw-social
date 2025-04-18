@@ -1,8 +1,8 @@
 use crate::contract::map_validate;
 use crate::error::ContractError;
 use crate::msg::Cyberlink;
-use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS, TYPE_IDS};
-use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64};
+use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS, TYPE_IDS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
+use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64, Storage, Addr, StdResult};
 
 fn validate_cyberlink(
     deps: Deps,
@@ -120,6 +120,10 @@ fn create_cyberlink(
     // Save the cyberlink using IndexedMap with numeric ID for efficient indexing
     cyberlinks().save(deps.storage, id, &cyberlink_state)?;
 
+    // ---- Increment Counters ----
+    increment_counters(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
+    // -------------------------
+
     Ok((id, formatted_id))
 }
 
@@ -200,7 +204,7 @@ pub fn execute_create_cyberlinks(
         // Validate the cyberlink
         validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
 
-        // Create the cyberlink
+        // Create the cyberlink (this now increments counters internally)
         let (numeric_id, formatted_id) = create_cyberlink(deps.branch(), env.clone(), info.clone(), None, cyberlink)?;
         numeric_ids.push(numeric_id);
         formatted_ids.push(formatted_id);
@@ -219,92 +223,56 @@ pub fn execute_update_cyberlink(
     env: Env,
     info: MessageInfo,
     id: String,
-    cyberlink: Cyberlink,
+    new_value: Option<String>, // Renamed parameter
 ) -> Result<Response, ContractError> {
-    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.unwrap_or(0);
+    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
 
     let deleted_id = DELETED_IDS.may_load(deps.storage, global_id)?;
     if deleted_id.is_some() {
         return Err(ContractError::DeletedCyberlink { id });
     }
 
-    // Check if the cyberlink exists
-    let mut cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    // Check if the cyberlink exists and load old state
+    let old_cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
 
     let config = CONFIG.load(deps.storage)?;
 
     // Check if the user is the owner or an admin
-    if cyberlink_state.owner != info.sender && !config.is_admin(info.sender.as_str()) {
+    if old_cyberlink_state.owner != info.sender && !config.is_admin(info.sender.as_str()) {
         return Err(ContractError::Unauthorized {});
     }
 
-    // Ensure type is not changed
-    if cyberlink.type_ != cyberlink_state.type_ {
-        return Err(ContractError::CannotChangeType {
-            id: id,
-            original_type: cyberlink_state.type_.clone(),
-            new_type: cyberlink.type_.clone(),
-        });
-    }
+    // Update the state
+    let mut updated_state = old_cyberlink_state; // Use old state directly
+    updated_state.value = new_value.unwrap_or_default(); // Update value
+    updated_state.updated_at = Some(env.block.time); // Set updated time
 
-    // Ensure from and to are not changed
-    if let Some(from) = &cyberlink.from {
-        if *from != cyberlink_state.from {
-            return Err(ContractError::CannotChangeLinks {
-                id,
-                field: "from".to_string(),
-                original: cyberlink_state.from.clone(),
-                new: from.clone(),
-            });
-        }
-    }
-
-    if let Some(to) = &cyberlink.to {
-        if *to != cyberlink_state.to {
-            return Err(ContractError::CannotChangeLinks {
-                id,
-                field: "to".to_string(),
-                original: cyberlink_state.to.clone(),
-                new: to.clone(),
-            });
-        }
-    }
-    
-    // Update only the value of the cyberlink
-    cyberlink_state.value = cyberlink.value.unwrap_or_default();
-    cyberlink_state.updated_at = Some(env.block.time);
-
-    // Save the updated cyberlink to the IndexedMap
-    cyberlinks().update(deps.storage, global_id, |_| -> cosmwasm_std::StdResult<_> { Ok(cyberlink_state) })?;
+    // Save updated state
+    cyberlinks().save(deps.storage, global_id, &updated_state)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_cyberlink")
-        .add_attribute("formatted_id", id) // Keep formatted ID in response
-        .add_attribute("global_id", global_id.to_string()) // Add numeric ID for clarity
+        .add_attribute("numeric_id", global_id.to_string())
+        .add_attribute("formatted_id", id)
     )
 }
 
-// TODO revisit delete, delete in maps, remove DELETED_IDS
 pub fn execute_delete_cyberlink(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     id: String // Formatted ID (e.g., "Type:1")
 ) -> Result<Response, ContractError> {
-    // Load the numeric ID using the formatted ID
-    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?
-        .ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
+    // Load the global ID corresponding to the formatted ID
+    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
 
-    let deleted_id = DELETED_IDS.may_load(deps.storage, global_id)?;
-    if deleted_id.is_some() {
+    // Check if already marked as deleted
+    if DELETED_IDS.has(deps.storage, global_id) {
         return Err(ContractError::DeletedCyberlink { id });
     }
 
-    // Check if the cyberlink exists using the numeric ID
-    let cyberlink_state = match cyberlinks().may_load(deps.storage, global_id)? {
-        Some(state) => state,
-        None => return Err(ContractError::NotFound { id: id.clone() }),
-    };
+    // Load the cyberlink state to check ownership and get details for counter decrement
+    let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -313,19 +281,25 @@ pub fn execute_delete_cyberlink(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Mark the cyberlink as deleted - we do not remove the formatted ID from NAMED_CYBERLINKS
+    // ---- Decrement Counters ----
+    decrement_counters(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
+    // -------------------------
+
+    // Mark the cyberlink as deleted using the DELETED_IDS map
     DELETED_IDS.save(deps.storage, global_id, &true)?;
 
-    // Remove the cyberlink from the IndexedMap
+    // Optional: Completely remove the cyberlink state and its named entry to save space
     cyberlinks().remove(deps.storage, global_id)?;
+    // NAMED_CYBERLINKS.remove(deps.storage, id.as_str());
+    // Consider the implications: Queries by GID will fail entirely instead of returning a "deleted" error.
+    // Queries relying on the existence of the NAMED_CYBERLINKS entry will also fail.
 
     Ok(Response::new()
         .add_attribute("action", "delete_cyberlink")
-        .add_attribute("formatted_id", id) // Keep formatted ID in response
-        .add_attribute("global_id", global_id.to_string()) // Add numeric ID for clarity
+        .add_attribute("numeric_id", global_id.to_string())
+        .add_attribute("formatted_id", id)
     )
 }
-
 
 pub fn execute_update_admins(
     deps: DepsMut,
@@ -373,5 +347,59 @@ pub fn execute_update_executors(
         .add_attribute("action", "update_executors")
         .add_attribute("count", new_executors.len().to_string())
     )
+}
+
+// --- Counter Helper Functions ---
+
+fn increment_counters(
+    storage: &mut dyn Storage,
+    owner: &Addr,
+    type_: &str,
+) -> StdResult<()> {
+    // Increment owner count
+    let owner_count = OWNER_LINK_COUNT.may_load(storage, owner)?.unwrap_or(0) + 1;
+    OWNER_LINK_COUNT.save(storage, owner, &owner_count)?;
+
+    // Increment type count
+    let type_count = TYPE_LINK_COUNT.may_load(storage, type_)?.unwrap_or(0) + 1;
+    TYPE_LINK_COUNT.save(storage, type_, &type_count)?;
+
+    // Increment owner-type count
+    let owner_type_count = OWNER_TYPE_LINK_COUNT.may_load(storage, (owner, type_))?.unwrap_or(0) + 1;
+    OWNER_TYPE_LINK_COUNT.save(storage, (owner, type_), &owner_type_count)?;
+
+    Ok(())
+}
+
+fn decrement_counters(
+    storage: &mut dyn Storage,
+    owner: &Addr,
+    type_: &str,
+) -> StdResult<()> {
+    // Decrement owner count, removing if zero
+    let owner_count = OWNER_LINK_COUNT.load(storage, owner)?;
+    if owner_count <= 1 {
+        OWNER_LINK_COUNT.remove(storage, owner);
+    } else {
+        OWNER_LINK_COUNT.save(storage, owner, &(owner_count - 1))?;
+    }
+
+    // Decrement type count, removing if zero
+    let type_count = TYPE_LINK_COUNT.load(storage, type_)?;
+    if type_count <= 1 {
+        TYPE_LINK_COUNT.remove(storage, type_);
+    } else {
+        TYPE_LINK_COUNT.save(storage, type_, &(type_count - 1))?;
+    }
+
+    // Decrement owner-type count, removing if zero
+    let owner_type_count = OWNER_TYPE_LINK_COUNT.load(storage, (owner, type_))?;
+    if owner_type_count <= 1 {
+        OWNER_TYPE_LINK_COUNT.remove(storage, (owner, type_));
+    } else {
+        OWNER_TYPE_LINK_COUNT.save(storage, (owner, type_), &(owner_type_count - 1))?;
+    }
+
+    Ok(())
 }
 
