@@ -403,3 +403,135 @@ fn decrement_counters(
     Ok(())
 }
 
+pub fn execute_create_vertex_and_link(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    vertex_type: String,
+    vertex_value: Option<String>,
+    link_type: String,
+    link_value: Option<String>,
+    link_from_existing_id: Option<String>,
+    link_to_existing_id: Option<String>,
+) -> Result<Response, ContractError> {
+    // 1. Authorization
+    let config = CONFIG.load(deps.storage)?;
+    if !config.can_execute(info.sender.as_str()) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // 2. Input Validation
+    // 2.1 Link Specification
+    let (existing_vertex_id, link_from_new, link_to_new) = 
+        match (link_from_existing_id.clone(), link_to_existing_id.clone()) {
+            (Some(from_id), None) => (from_id, false, true), // Link FROM existing TO new
+            (None, Some(to_id)) => (to_id, true, false),   // Link FROM new TO existing
+            _ => return Err(ContractError::InvalidLinkSpecification {}),
+        };
+
+    // 2.2 Type Existence
+    let vertex_type_gid = NAMED_CYBERLINKS.may_load(deps.storage, &vertex_type)?
+        .ok_or_else(|| ContractError::TypeNotExists { type_: vertex_type.clone() })?;
+    // Load vertex type state only if needed for strict validation later, otherwise existence check is enough
+    // let _vertex_type_state = cyberlinks().load(deps.storage, vertex_type_gid)?;
+    
+    let link_type_gid = NAMED_CYBERLINKS.may_load(deps.storage, &link_type)?
+        .ok_or_else(|| ContractError::TypeNotExists { type_: link_type.clone() })?;
+    let link_type_state = cyberlinks().load(deps.storage, link_type_gid)?;
+
+    // 2.3 Existing Vertex Validation
+    let existing_vertex_gid = NAMED_CYBERLINKS.may_load(deps.storage, &existing_vertex_id)?
+        .ok_or_else(|| {
+            if link_from_new { // Linking TO existing, so it's a 'ToNotExists' error
+                ContractError::ToNotExists { to: existing_vertex_id.clone() }
+            } else { // Linking FROM existing, so it's a 'FromNotExists' error
+                ContractError::FromNotExists { from: existing_vertex_id.clone() }
+            }
+        })?;
+    
+    if DELETED_IDS.has(deps.storage, existing_vertex_gid) {
+        return Err(ContractError::NotFound { id: existing_vertex_id.clone() }); // Treat deleted as not found for linking
+    }
+    let existing_vertex_state = cyberlinks().load(deps.storage, existing_vertex_gid)?;
+
+    // 2.4 Type Compatibility Validation (Using loaded states)
+    // Check compatibility based on link direction relative to the NEW vertex
+    if link_from_new { // Link: New -> Existing
+        // Check link_type.from compatibility with new vertex_type
+        if link_type_state.from != "Any" && link_type_state.from != vertex_type {
+            return Err(ContractError::TypeConflict { /* ... detailed fields ... */ 
+                id: "<link> (new->existing)".to_string(), type_: link_type.clone(), 
+                from: "<new_vertex>".to_string(), to: existing_vertex_id.clone(),
+                expected_type: link_type.clone(), expected_from: link_type_state.from, expected_to: link_type_state.to,
+                received_type: link_type.clone(), received_from: vertex_type.clone(), received_to: existing_vertex_state.type_
+            });
+        }
+        // Check link_type.to compatibility with existing_vertex_state.type
+        if link_type_state.to != "Any" && link_type_state.to != existing_vertex_state.type_ {
+            return Err(ContractError::TypeConflict { /* ... detailed fields ... */
+                id: "<link> (new->existing)".to_string(), type_: link_type.clone(), 
+                from: "<new_vertex>".to_string(), to: existing_vertex_id.clone(),
+                expected_type: link_type.clone(), expected_from: link_type_state.from, expected_to: link_type_state.to,
+                received_type: link_type.clone(), received_from: vertex_type.clone(), received_to: existing_vertex_state.type_
+            });
+        }
+    } else { // Link: Existing -> New
+        // Check link_type.from compatibility with existing_vertex_state.type
+        if link_type_state.from != "Any" && link_type_state.from != existing_vertex_state.type_ {
+             return Err(ContractError::TypeConflict { /* ... detailed fields ... */
+                id: "<link> (existing->new)".to_string(), type_: link_type.clone(), 
+                from: existing_vertex_id.clone(), to: "<new_vertex>".to_string(),
+                expected_type: link_type.clone(), expected_from: link_type_state.from, expected_to: link_type_state.to,
+                received_type: link_type.clone(), received_from: existing_vertex_state.type_, received_to: vertex_type.clone()
+             });
+        }
+        // Check link_type.to compatibility with new vertex_type
+        if link_type_state.to != "Any" && link_type_state.to != vertex_type {
+             return Err(ContractError::TypeConflict { /* ... detailed fields ... */
+                id: "<link> (existing->new)".to_string(), type_: link_type.clone(), 
+                from: existing_vertex_id.clone(), to: "<new_vertex>".to_string(),
+                expected_type: link_type.clone(), expected_from: link_type_state.from, expected_to: link_type_state.to,
+                received_type: link_type.clone(), received_from: existing_vertex_state.type_, received_to: vertex_type.clone()
+             });
+        }
+    }
+
+    // 3. Create New Vertex
+    let vertex_cyberlink = Cyberlink {
+        type_: vertex_type,
+        from: None, // Vertices are nodes, no from/to
+        to: None,
+        value: vertex_value,
+    };
+    // Use deps.branch() for the first creation to isolate potential state changes if create_cyberlink modified more state
+    let (new_vertex_gid, new_vertex_formatted_id) = 
+        create_cyberlink(deps.branch(), env.clone(), info.clone(), None, vertex_cyberlink)?;
+
+    // 4. Create Link
+    let (link_from, link_to) = if link_from_new {
+        (Some(new_vertex_formatted_id.clone()), Some(existing_vertex_id.clone()))
+    } else {
+        (Some(existing_vertex_id.clone()), Some(new_vertex_formatted_id.clone()))
+    };
+
+    let link_cyberlink = Cyberlink {
+        type_: link_type,
+        from: link_from,
+        to: link_to,
+        value: link_value,
+    };
+    // Don't need validate_cyberlink here as create_cyberlink does necessary checks (like type existence)
+    // and we performed the complex logic checks (like type compatibility) already.
+    let (link_gid, link_formatted_id) = 
+        create_cyberlink(deps, env, info, None, link_cyberlink)?;
+
+    // 5. Response
+    Ok(Response::new()
+        .add_attribute("action", "create_vertex_and_link")
+        .add_attribute("new_vertex_gid", new_vertex_gid.to_string())
+        .add_attribute("new_vertex_id", new_vertex_formatted_id)
+        .add_attribute("link_gid", link_gid.to_string())
+        .add_attribute("link_id", link_formatted_id)
+    )
+}
+

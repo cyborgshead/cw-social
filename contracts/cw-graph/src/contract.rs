@@ -4,7 +4,7 @@ use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Empty, Env,
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors};
+use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors, execute_create_vertex_and_link};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::{query_config, query_cyberlink_by_formatted_id, query_cyberlinks_by_gids, query_cyberlinks_set_by_gids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_cyberlink_by_gid, query_last_gid, query_cyberlinks_by_ids, query_state, query_cyberlinks_set_by_ids, query_cyberlinks_by_type, query_cyberlinks_by_from, query_cyberlinks_by_to, query_cyberlinks_by_owner_and_type, query_get_counts};
 use crate::semcores::SemanticCore;
@@ -122,7 +122,25 @@ pub fn execute(
         ExecuteMsg::UpdateCyberlink { id, value } => execute_update_cyberlink(deps, env, info, id, value),
         ExecuteMsg::DeleteCyberlink { id } => execute_delete_cyberlink(deps, env, info, id),
         ExecuteMsg::UpdateAdmins { new_admins } => execute_update_admins(deps, env, info, new_admins),
-        ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors)
+        ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors),
+        ExecuteMsg::CreateVertexAndLink {
+            vertex_type,
+            vertex_value,
+            link_type,
+            link_value,
+            link_from_existing_id,
+            link_to_existing_id,
+        } => execute_create_vertex_and_link(
+            deps, 
+            env, 
+            info, 
+            vertex_type, 
+            vertex_value, 
+            link_type, 
+            link_value, 
+            link_from_existing_id, 
+            link_to_existing_id
+        ),
     }
 }
 

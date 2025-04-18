@@ -54,6 +54,21 @@ pub enum ExecuteMsg {
     UpdateExecutors {
         new_executors: Vec<String>
     },
+    CreateVertexAndLink {
+        /// Data for the new vertex (node) to be created.
+        vertex_type: String,
+        vertex_value: Option<String>, // Optional value for the new vertex
+
+        /// Data for the new link (edge) to be created.
+        link_type: String,
+        link_value: Option<String>, // Optional value for the new link
+
+        /// Specifies the connection point for the link.
+        /// Exactly ONE of these must be Some, indicating the pre-existing vertex.
+        /// The other implicitly refers to the newly created vertex.
+        link_from_existing_id: Option<String>, // If Some, the link goes FROM this existing vertex TO the new one.
+        link_to_existing_id: Option<String>,   // If Some, the link goes FROM the new vertex TO this existing one.
+    },
 }
 
 #[cw_serde]

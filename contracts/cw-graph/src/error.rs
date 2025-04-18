@@ -58,6 +58,9 @@ pub enum ContractError {
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("Invalid link specification: Exactly one of link_from_existing_id or link_to_existing_id must be provided")]
+    InvalidLinkSpecification {},
 }
 
 impl From<semver::Error> for ContractError {
