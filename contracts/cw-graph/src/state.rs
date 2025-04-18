@@ -30,6 +30,7 @@ pub struct CyberlinkIndices<'a> {
     // Index by to
     pub to: MultiIndex<'a, String, CyberlinkState, u64>,
     
+    // TODO WIP complex indexes in design stage
     pub created_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
     pub updated_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
     // Index by formatted_id

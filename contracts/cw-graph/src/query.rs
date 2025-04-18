@@ -3,14 +3,14 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Deps, Env, Order, StdError, StdResult, Timestamp, Uint64};
 use cw_storage_plus::Bound;
 
-pub fn query_last_id(deps: Deps) -> StdResult<Uint64> {
+pub fn query_last_gid(deps: Deps) -> StdResult<Uint64> {
     let last_id = ID.load(deps.storage)?;
     Ok(Uint64::new(last_id))
 }
 
-pub fn query_id(deps: Deps, id: Uint64) -> StdResult<CyberlinkState> {
+pub fn query_cyberlink_by_gid(deps: Deps, id: Uint64) -> StdResult<CyberlinkState> {
     // Check if the cyberlink is deleted
-    if DELETED_IDS.may_load(deps.storage, id.u64())?.unwrap_or(false) {
+    if DELETED_IDS.has(deps.storage, id.u64()) {
         return Err(StdError::not_found("deleted cyberlink"));
     }
 
@@ -53,7 +53,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
 
-pub fn query_cyberlinks(deps: Deps, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+pub fn query_cyberlinks_by_gids(deps: Deps, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
     let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
@@ -98,12 +98,12 @@ pub fn query_named_cyberlinks(deps: Deps, start_after: Option<String>, limit: Op
     Ok(cyberlinks)
 }
 
-pub fn query_cyberlinks_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+pub fn query_cyberlinks_set_by_gids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64, CyberlinkState)>> {
     let mut links: Vec<(u64, CyberlinkState)> = vec![];
 
     for id in ids {
         // Skip deleted cyberlinks
-        if DELETED_IDS.may_load(deps.storage, id)?.unwrap_or(false) {
+        if DELETED_IDS.has(deps.storage, id) {
             continue;
         }
         let cyberlink = cyberlinks().load(deps.storage, id)?;
@@ -219,12 +219,38 @@ pub fn query_cyberlink_by_formatted_id(deps: Deps, formatted_id: String) -> StdR
     // First try to load directly from NAMED_CYBERLINKS
     let global_id = NAMED_CYBERLINKS.load(deps.storage, &formatted_id)?;
     if DELETED_IDS.has(deps.storage, global_id) {
-        return Err(StdError::not_found("cyberlink has been deleted"));
+        return Err(StdError::not_found("deleted cyberlink"));
     }
 
     let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
 
     Ok(cyberlink_state)
+}
+
+pub fn query_cyberlinks_set_by_ids(deps: Deps, ids: Vec<String>) -> StdResult<Vec<(String, CyberlinkState)>> {
+    let mut links: Vec<(String, CyberlinkState)> = vec![];
+
+    for formatted_id in ids {
+        // Load the global ID corresponding to the formatted ID
+        match NAMED_CYBERLINKS.load(deps.storage, &formatted_id) {
+            Ok(global_id) => {
+                // Check if the cyberlink is deleted
+                if DELETED_IDS.has(deps.storage, global_id) {
+                    continue; // Skip deleted cyberlinks
+                }
+                // Load the cyberlink state
+                match cyberlinks().load(deps.storage, global_id) {
+                    Ok(cyberlink_state) => {
+                        links.push((formatted_id.clone(), cyberlink_state));
+                    },
+                    Err(_) => continue, // Skip if loading fails (should be rare if NAMED_CYBERLINKS exists)
+                }
+            },
+            Err(_) => continue, // Skip if the formatted ID doesn't exist
+        }
+    }
+
+    Ok(links)
 }
 
 #[cw_serde]

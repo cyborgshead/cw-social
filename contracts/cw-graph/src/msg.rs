@@ -66,27 +66,37 @@ pub enum QueryMsg {
     
     // Global IDs API
     #[returns(Uint64)]
-    LastId {},
+    LastGID {},
     #[returns(CyberlinkState)]
-    Cyberlink {
-        id: Uint64,
+    CyberlinkByGID {
+        gid: Uint64,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
-    Cyberlinks {
+    CyberlinksByGIDs {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksSetByGIDs {
+        ids: Vec<u64>,
+    },
 
     // Formatted IDs API (default IDs)
+    #[returns(CyberlinkState)]
+    CyberlinkByID {
+        id: String,
+    },
     #[returns(Vec<(String, CyberlinkState)>)]
-    NamedCyberlinks {
+    CyberlinksByIDs {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    #[returns(Vec<(u64, CyberlinkState)>)]
-    CyberlinksByIds {
-        ids: Vec<u64>,
+    #[returns(Vec<(String, CyberlinkState)>)]
+    CyberlinksSetByIDs {
+        ids: Vec<String>,
     },
+
+    // Formatted IDs API (WIP)
     #[returns(Vec<(u64, CyberlinkState)>)]
     CyberlinksByOwner {
         owner: String,
@@ -108,9 +118,5 @@ pub enum QueryMsg {
         end_time: Option<Timestamp>,
         start_after: Option<u64>,
         limit: Option<u32>,
-    },
-    #[returns(CyberlinkState)]
-    CyberlinkById {
-        id: String,
     },
 }

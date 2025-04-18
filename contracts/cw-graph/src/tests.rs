@@ -6,7 +6,7 @@ mod tests {
     use crate::query::ConfigResponse;
     use crate::state::{CyberlinkState, NAMED_CYBERLINKS};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, message_info, MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::{from_json, Addr, OwnedDeps, Response, Timestamp, Uint64};
+    use cosmwasm_std::{from_json, Addr, OwnedDeps, Response, Timestamp};
     use serde::Deserialize;
     use std::fs::File;
     use std::io::BufReader;
@@ -296,7 +296,7 @@ mod tests {
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify the update was successful
-        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
         
@@ -370,7 +370,7 @@ mod tests {
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify admin update
-        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
 
@@ -429,7 +429,7 @@ mod tests {
             .clone();
         
         // Verify cyberlink exists
-        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
         let _: CyberlinkState = from_json(&res).unwrap();
         
@@ -450,8 +450,7 @@ mod tests {
         
         // Verify cyberlink is marked as deleted (query should fail)
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
-        println!("Error: {:?}", err);
-        assert!(err.to_string().contains("cyberlink has been deleted"), "Query for deleted cyberlink should fail");
+        assert!(err.to_string().contains("deleted cyberlink"), "Query for deleted cyberlink should fail");
         
         // Create another cyberlink for admin deletion test
         let cyberlink2 = Cyberlink {
@@ -476,12 +475,12 @@ mod tests {
         assert_eq!(res.attributes[0].value, "delete_cyberlink");
         
         // Verify second cyberlink is also deleted
-        let query_msg2 = QueryMsg::CyberlinkById { id: formatted_id2.clone() };
+        let query_msg2 = QueryMsg::CyberlinkByID { id: formatted_id2.clone() };
         let err = query(deps.as_ref(), mock_env(), query_msg2).unwrap_err();
-        assert!(err.to_string().contains("cyberlink has been deleted"), "Query for deleted cyberlink should fail");
+        assert!(err.to_string().contains("deleted cyberlink"), "Query for deleted cyberlink should fail");
         
         // Query by formatted ID should also fail
-        let formatted_query = QueryMsg::CyberlinkById { id: formatted_id2.clone() };
+        let formatted_query = QueryMsg::CyberlinkByID { id: formatted_id2.clone() };
         let err = query(deps.as_ref(), mock_env(), formatted_query).unwrap_err();
         assert!(err.to_string().contains("not found") || err.to_string().contains("deleted"), 
                 "Query by formatted ID should fail for deleted cyberlink");
@@ -532,6 +531,10 @@ mod tests {
             .unwrap()
             .value
             .clone();
+        let first_numeric_id = res.attributes.iter()
+            .find(|attr| attr.key == "numeric_id")
+            .map(|attr| attr.value.parse::<u64>().unwrap())
+            .unwrap();
         
         // Create a mock environment with the second timestamp
         let mut env2 = mock_env();
@@ -665,7 +668,7 @@ mod tests {
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks (created or updated) between time3 and time4");
         
         // Find the updated cyberlink
-        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == formatted_id);
+        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == first_numeric_id);
         assert!(updated_cyberlink.is_some(), "Should include the updated cyberlink");
         
         // Test 7: Query with pagination
@@ -740,6 +743,10 @@ mod tests {
             .unwrap()
             .value
             .clone();
+        let first_numeric_id = res.attributes.iter()
+            .find(|attr| attr.key == "numeric_id")
+            .map(|attr| attr.value.parse::<u64>().unwrap())
+            .unwrap();
         
         // Create second cyberlink at time2
         let mut env2 = mock_env();
@@ -839,7 +846,7 @@ mod tests {
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time3 and time4");
         
         // Check that we have both the updated first cyberlink and the third cyberlink
-        let has_updated = cyberlinks.iter().any(|(id, _)| *id == first_id);
+        let has_updated = cyberlinks.iter().any(|(id, _)| *id == first_numeric_id);
         let has_third = cyberlinks.iter().any(|(_, d)| d.value == "Third cyberlink");
         
         assert!(has_updated, "Should include the updated first cyberlink");
@@ -927,7 +934,7 @@ mod tests {
         assert_eq!(formatted_id, "Post:1");
 
         // Query by formatted ID
-        let query_msg = QueryMsg::CyberlinkById {
+        let query_msg = QueryMsg::CyberlinkByID {
             id: formatted_id.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
@@ -1090,7 +1097,7 @@ mod tests {
         assert_eq!(update_response.attributes[0].value, "update_cyberlink");
         
         // Query to verify the update worked
-        let query_msg = QueryMsg::CyberlinkById { 
+        let query_msg = QueryMsg::CyberlinkByID { 
             id: formatted_id.clone()
         };
         let query_response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
@@ -1140,13 +1147,6 @@ mod tests {
         };
         let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
-
-        // Get the numeric and formatted IDs
-        let numeric_id = response.attributes
-            .iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
-            .unwrap();
         
         let formatted_id = response.attributes
             .iter()
@@ -1163,14 +1163,14 @@ mod tests {
         execute(deps.as_mut(), mock_env(), admin_info, delete_msg).unwrap();
 
         // Verify the numeric ID is marked as deleted
-        let query_msg = QueryMsg::CyberlinkById {
+        let query_msg = QueryMsg::CyberlinkByID {
             id: formatted_id.clone(),
         };
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
         assert!(err.to_string().contains("deleted cyberlink"));
 
         // Verify the formatted ID entry still exists in storage but is considered deleted
-        let query_msg = QueryMsg::CyberlinkById {
+        let query_msg = QueryMsg::CyberlinkByID {
             id: formatted_id.clone(),
         };
         // This should return not_found error because we detect the linked numeric ID is deleted
@@ -1235,7 +1235,7 @@ mod tests {
         assert_eq!(formatted_id, "Article:1");
 
         // Query by formatted ID initially
-        let query_msg = QueryMsg::CyberlinkById {
+        let query_msg = QueryMsg::CyberlinkByID {
             id: formatted_id.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
