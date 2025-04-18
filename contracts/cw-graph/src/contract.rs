@@ -6,7 +6,7 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::query::{query_config, query_cyberlink_by_formatted_id, query_cyberlinks_by_gids, query_cyberlinks_set_by_gids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_cyberlink_by_gid, query_last_gid, query_named_cyberlinks, query_state, query_cyberlinks_set_by_ids};
+use crate::query::{query_config, query_cyberlink_by_formatted_id, query_cyberlinks_by_gids, query_cyberlinks_set_by_gids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_cyberlink_by_gid, query_last_gid, query_cyberlinks_by_ids, query_state, query_cyberlinks_set_by_ids, query_cyberlinks_by_type, query_cyberlinks_by_from, query_cyberlinks_by_to, query_cyberlinks_by_owner_and_type, query_get_counts};
 use crate::semcores::SemanticCore;
 use crate::state::{cyberlinks, Config, CyberlinkState, CONFIG, ID, NAMED_CYBERLINKS};
 
@@ -119,7 +119,7 @@ pub fn execute(
         ExecuteMsg::CreateNamedCyberlink { name, cyberlink } => execute_create_named_cyberlink(deps, env, info, name, cyberlink),
         ExecuteMsg::CreateCyberlink { cyberlink } => execute_create_cyberlink(deps, env, info, cyberlink),
         ExecuteMsg::CreateCyberlinks { cyberlinks } => execute_create_cyberlinks(deps, env, info, cyberlinks),
-        ExecuteMsg::UpdateCyberlink { id, cyberlink } => execute_update_cyberlink(deps, env, info, id, cyberlink),
+        ExecuteMsg::UpdateCyberlink { id, value } => execute_update_cyberlink(deps, env, info, id, value),
         ExecuteMsg::DeleteCyberlink { id } => execute_delete_cyberlink(deps, env, info, id),
         ExecuteMsg::UpdateAdmins { new_admins } => execute_update_admins(deps, env, info, new_admins),
         ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors)
@@ -131,6 +131,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::DebugState {} => to_json_binary(&query_state(deps)?),
+        QueryMsg::GetCounts { owner, type_ } => to_json_binary(&query_get_counts(deps, owner, type_)?),
         
         QueryMsg::LastGID {} => to_json_binary(&query_last_gid(deps)?),
         QueryMsg::CyberlinkByGID { gid: id } => to_json_binary(&query_cyberlink_by_gid(deps, id)?),
@@ -138,7 +139,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::CyberlinksSetByGIDs { ids } => to_json_binary(&query_cyberlinks_set_by_gids(deps, ids)?),
         
         QueryMsg::CyberlinkByID { id } => to_json_binary(&query_cyberlink_by_formatted_id(deps, id)?),
-        QueryMsg::CyberlinksByIDs { start_after, limit } => to_json_binary(&query_named_cyberlinks(deps, start_after, limit)?),
+        QueryMsg::CyberlinksByIDs { start_after, limit } => to_json_binary(&query_cyberlinks_by_ids(deps, start_after, limit)?),
         QueryMsg::CyberlinksSetByIDs { ids } => to_json_binary(&query_cyberlinks_set_by_ids(deps, ids)?),
         
         QueryMsg::CyberlinksByOwner { owner, start_after, limit } => to_json_binary(&query_cyberlinks_by_owner(deps, owner, start_after, limit)?),
@@ -146,6 +147,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_cyberlinks_by_owner_time(deps, env, owner, start_time, end_time, start_after, limit)?),
         QueryMsg::CyberlinksByOwnerTimeAny { owner, start_time, end_time, start_after, limit } =>
             to_json_binary(&query_cyberlinks_by_owner_time_any(deps, env, owner, start_time, end_time, start_after, limit)?),
+
+        QueryMsg::CyberlinksByType { type_, start_after, limit } => to_json_binary(&query_cyberlinks_by_type(deps, type_, start_after, limit)?),
+        QueryMsg::CyberlinksByFrom { from, start_after, limit } => to_json_binary(&query_cyberlinks_by_from(deps, from, start_after, limit)?),
+        QueryMsg::CyberlinksByTo { to, start_after, limit } => to_json_binary(&query_cyberlinks_by_to(deps, to, start_after, limit)?),
+        QueryMsg::CyberlinksByOwnerAndType { owner, type_, start_after, limit } => to_json_binary(&query_cyberlinks_by_owner_and_type(deps, owner, type_, start_after, limit)?),
     }
 }
 

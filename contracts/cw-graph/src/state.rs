@@ -30,11 +30,14 @@ pub struct CyberlinkIndices<'a> {
     // Index by to
     pub to: MultiIndex<'a, String, CyberlinkState, u64>,
     
-    // TODO WIP complex indexes in design stage
-    pub created_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
-    pub updated_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
+    // Index by owner and type (composite)
+    pub owner_type: MultiIndex<'a, (Addr, String), CyberlinkState, u64>,
     // Index by formatted_id
     pub formatted_id: MultiIndex<'a, String, CyberlinkState, u64>,
+
+    // TODO WIP in design stage
+    pub created_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
+    pub updated_at: MultiIndex<'a, (Addr, u64), CyberlinkState, u64>,
 }
 
 // Implement IndexList for CyberlinkIndices
@@ -42,6 +45,7 @@ impl<'a> IndexList<CyberlinkState> for CyberlinkIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CyberlinkState>> + '_> {
         let v: Vec<&dyn Index<CyberlinkState>> = vec![
             &self.owner, &self.type_, &self.from, &self.to, 
+            &self.owner_type,
             &self.created_at, &self.updated_at, &self.formatted_id
         ];
         Box::new(v.into_iter())
@@ -72,6 +76,12 @@ pub fn cyberlinks<'a>() -> IndexedMap<u64, CyberlinkState, CyberlinkIndices<'a>>
             "cyberlinks__to",
         ),
         
+        owner_type: MultiIndex::new(
+            |_pk, d: &CyberlinkState| (d.owner.clone(), d.type_.clone()),
+            CYBERLINKS_KEY,
+            "cyberlinks__owner_type",
+        ),
+
         created_at: MultiIndex::new(
             |_pk, d: &CyberlinkState| (d.owner.clone(), d.created_at.nanos()),
             CYBERLINKS_KEY,
@@ -135,4 +145,15 @@ impl Config {
 
 pub const CONFIG_KEY: &str = "config";
 pub const CONFIG: Item<Config> = Item::new(CONFIG_KEY);
+
+// Stateful Counts (Tier 4)
+pub const OWNER_LINK_COUNT_KEY: &str = "owner_link_count";
+pub const OWNER_LINK_COUNT: Map<&Addr, u64> = Map::new(OWNER_LINK_COUNT_KEY);
+
+pub const TYPE_LINK_COUNT_KEY: &str = "type_link_count";
+pub const TYPE_LINK_COUNT: Map<&str, u64> = Map::new(TYPE_LINK_COUNT_KEY);
+
+pub const OWNER_TYPE_LINK_COUNT_KEY: &str = "owner_type_link_count";
+// Key is (Owner Addr, Type String)
+pub const OWNER_TYPE_LINK_COUNT: Map<(&Addr, &str), u64> = Map::new(OWNER_TYPE_LINK_COUNT_KEY);
 

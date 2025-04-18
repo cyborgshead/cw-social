@@ -43,7 +43,7 @@ pub enum ExecuteMsg {
     },
     UpdateCyberlink {
         id: String,
-        cyberlink: Cyberlink,
+        value: Option<String>,
     },
     DeleteCyberlink {
         id: String,
@@ -104,6 +104,25 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByType {
+        #[serde(rename = "type")]
+        type_: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByFrom {
+        from: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByTo {
+        to: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, CyberlinkState)>)]
     CyberlinksByOwnerTime {
         owner: String,
         start_time: Timestamp,
@@ -119,4 +138,30 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByOwnerAndType {
+        owner: String,
+        #[serde(rename = "type")]
+        type_: String,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+
+    // Tier 4: Aggregation (Stateful Counts)
+    #[returns(CountsResponse)]
+    GetCounts {
+        // If owner is Some, returns owner_count and owner_type_count (if type_ is also Some)
+        owner: Option<String>,
+        // If type_ is Some, returns type_count and owner_type_count (if owner is also Some)
+        #[serde(rename = "type")]
+        type_: Option<String>,
+    },
+}
+
+// Response struct for count queries
+#[cw_serde]
+pub struct CountsResponse {
+    pub owner_count: Option<Uint64>,
+    pub type_count: Option<Uint64>,
+    pub owner_type_count: Option<Uint64>,
 }
