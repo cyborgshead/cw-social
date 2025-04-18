@@ -42,11 +42,11 @@ pub enum ExecuteMsg {
         cyberlinks: Vec<Cyberlink>,
     },
     UpdateCyberlink {
-        id: u64,
+        id: String,
         cyberlink: Cyberlink,
     },
     DeleteCyberlink {
-        id: Uint64,
+        id: String,
     },
     UpdateAdmins {
         new_admins: Vec<String>
@@ -59,21 +59,25 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Uint64)]
-    LastId {},
+    #[returns(ConfigResponse)]
+    Config {},
     #[returns(StateResponse)]
     DebugState {},
+    
+    // Global IDs API
+    #[returns(Uint64)]
+    LastId {},
     #[returns(CyberlinkState)]
     Cyberlink {
         id: Uint64,
     },
-    #[returns(ConfigResponse)]
-    Config {},
     #[returns(Vec<(u64, CyberlinkState)>)]
     Cyberlinks {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
+
+    // Formatted IDs API (default IDs)
     #[returns(Vec<(String, CyberlinkState)>)]
     NamedCyberlinks {
         start_after: Option<String>,
@@ -106,7 +110,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     #[returns(CyberlinkState)]
-    CyberlinkByFormattedId {
-        formatted_id: String,
+    CyberlinkById {
+        id: String,
     },
 }

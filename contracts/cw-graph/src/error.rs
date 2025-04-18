@@ -6,6 +6,10 @@ pub enum ContractError {
     #[error("Deleted cyberlink: {id}")]
     DeletedCyberlink { id: String },
 
+    #[error("Not found: {id}")]
+    NotFound { id: String },
+
+    // TODO: revisit and change to id: String
     #[error("Particular links is not allowed id: {id}, from: {from}, to: {to}, type: {type_}")]
     InvalidCyberlink {id: Uint64, from: String, to: String, type_: String},
 
@@ -29,10 +33,10 @@ pub enum ContractError {
     },
 
     #[error("Cannot change cyberlink type: ID {id} from {original_type} to {new_type}")]
-    CannotChangeType { id: u64, original_type: String, new_type: String },
+    CannotChangeType { id: String, original_type: String, new_type: String },
 
     #[error("Cannot change cyberlink {field}: ID {id} from {original} to {new}")]
-    CannotChangeLinks { id: u64, field: String, original: String, new: String },
+    CannotChangeLinks { id: String, field: String, original: String, new: String },
 
     #[error("Invalid name format: '{name}' contains a colon character (:) which is not allowed")]
     InvalidNameFormat { name: String },

@@ -133,7 +133,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::DebugState {} => to_json_binary(&query_state(deps)?),
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::Cyberlink { id } => to_json_binary(&query_id(deps, id)?),
-        QueryMsg::CyberlinkByFormattedId { formatted_id } => to_json_binary(&query_cyberlink_by_formatted_id(deps, formatted_id)?),
+        QueryMsg::CyberlinkById { id: formatted_id } => to_json_binary(&query_cyberlink_by_formatted_id(deps, formatted_id)?),
         QueryMsg::Cyberlinks { start_after, limit} => to_json_binary(&query_cyberlinks(deps, start_after, limit)?),
         QueryMsg::CyberlinksByIds { ids } => to_json_binary(&query_cyberlinks_by_ids(deps, ids)?),
         QueryMsg::NamedCyberlinks { start_after, limit } => to_json_binary(&query_named_cyberlinks(deps, start_after, limit)?),

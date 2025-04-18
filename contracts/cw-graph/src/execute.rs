@@ -218,17 +218,20 @@ pub fn execute_update_cyberlink(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    id: u64,
+    id: String,
     cyberlink: Cyberlink,
 ) -> Result<Response, ContractError> {
-    // Check if the user is an executor
-    let config = CONFIG.load(deps.storage)?;
-    if !config.can_execute(info.sender.as_str()) {
-        return Err(ContractError::Unauthorized {});
+    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.unwrap_or(0);
+
+    let deleted_id = DELETED_IDS.may_load(deps.storage, global_id)?;
+    if deleted_id.is_some() {
+        return Err(ContractError::DeletedCyberlink { id });
     }
 
     // Check if the cyberlink exists
-    let mut cyberlink_state = cyberlinks().load(deps.storage, id)?;
+    let mut cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+
+    let config = CONFIG.load(deps.storage)?;
 
     // Check if the user is the owner or an admin
     if cyberlink_state.owner != info.sender && !config.is_admin(info.sender.as_str()) {
@@ -272,11 +275,12 @@ pub fn execute_update_cyberlink(
     cyberlink_state.updated_at = Some(env.block.time);
 
     // Save the updated cyberlink to the IndexedMap
-    cyberlinks().save(deps.storage, id, &cyberlink_state)?;
+    cyberlinks().update(deps.storage, global_id, |_| -> cosmwasm_std::StdResult<_> { Ok(cyberlink_state) })?;
 
     Ok(Response::new()
         .add_attribute("action", "update_cyberlink")
-        .add_attribute("numeric_id", id.to_string())
+        .add_attribute("formatted_id", id) // Keep formatted ID in response
+        .add_attribute("global_id", global_id.to_string()) // Add numeric ID for clarity
     )
 }
 
@@ -285,16 +289,24 @@ pub fn execute_delete_cyberlink(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    id: Uint64
+    id: String // Formatted ID (e.g., "Type:1")
 ) -> Result<Response, ContractError> {
-    // Check if the user is an admin
-    let config = CONFIG.load(deps.storage)?;
-    if !config.can_modify(info.sender.as_str()) {
-        return Err(ContractError::Unauthorized {});
+    // Load the numeric ID using the formatted ID
+    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?
+        .ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
+
+    let deleted_id = DELETED_IDS.may_load(deps.storage, global_id)?;
+    if deleted_id.is_some() {
+        return Err(ContractError::DeletedCyberlink { id });
     }
 
-    // Check if the cyberlink exists
-    let cyberlink_state = cyberlinks().load(deps.storage, id.u64())?;
+    // Check if the cyberlink exists using the numeric ID
+    let cyberlink_state = match cyberlinks().may_load(deps.storage, global_id)? {
+        Some(state) => state,
+        None => return Err(ContractError::NotFound { id: id.clone() }),
+    };
+
+    let config = CONFIG.load(deps.storage)?;
 
     // Check if the user is the owner or an admin
     if cyberlink_state.owner != info.sender && !config.is_admin(info.sender.as_str()) {
@@ -302,14 +314,15 @@ pub fn execute_delete_cyberlink(
     }
 
     // Mark the cyberlink as deleted - we do not remove the formatted ID from NAMED_CYBERLINKS
-    DELETED_IDS.save(deps.storage, id.u64(), &true)?;
+    DELETED_IDS.save(deps.storage, global_id, &true)?;
 
     // Remove the cyberlink from the IndexedMap
-    cyberlinks().remove(deps.storage, id.u64())?;
+    cyberlinks().remove(deps.storage, global_id)?;
 
     Ok(Response::new()
         .add_attribute("action", "delete_cyberlink")
-        .add_attribute("numeric_id", id.to_string())
+        .add_attribute("formatted_id", id) // Keep formatted ID in response
+        .add_attribute("global_id", global_id.to_string()) // Add numeric ID for clarity
     )
 }
 

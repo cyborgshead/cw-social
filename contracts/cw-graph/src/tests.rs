@@ -275,10 +275,10 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
         // Extract the numeric ID from the response
-        let numeric_id = res.attributes
+        let formatted_id = res.attributes
             .iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
+            .find(|attr| attr.key == "formatted_id")
+            .map(|attr| attr.value.clone())
             .unwrap();
         
         // Update cyberlink with same type but different content
@@ -289,14 +289,14 @@ mod tests {
             value: Some("Updated content".to_string()),
         };
         let update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: updated_cyberlink.clone(),
         };
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), update_msg).unwrap();
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify the update was successful
-        let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
+        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
         
@@ -326,7 +326,7 @@ mod tests {
             value: Some("Should fail".to_string()),
         };
         let invalid_update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: invalid_update,
         };
         
@@ -334,7 +334,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), user_info.clone(), invalid_update_msg).unwrap_err();
         match err {
             ContractError::CannotChangeType { id, original_type, new_type } => {
-                assert_eq!(id, numeric_id);
+                assert_eq!(id, formatted_id.clone());
                 assert_eq!(original_type, "Post");
                 assert_eq!(new_type, "Comment");
             },
@@ -345,7 +345,7 @@ mod tests {
         let other_user = deps.api.addr_make("other_user");
         let other_info = message_info(&other_user, &[]);
         let update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: updated_cyberlink,
         };
         
@@ -361,7 +361,7 @@ mod tests {
             value: Some("Admin updated".to_string()),
         };
         let admin_update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: admin_update,
         };
         
@@ -370,7 +370,7 @@ mod tests {
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify admin update
-        let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
+        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
 
@@ -421,13 +421,6 @@ mod tests {
         let user_info = message_info(&user, &[]);
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
-        // Extract the numeric ID and formatted ID from the response
-        let numeric_id = res.attributes
-            .iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
-            .unwrap();
-        
         let formatted_id = res.attributes
             .iter()
             .find(|attr| attr.key == "formatted_id")
@@ -436,12 +429,12 @@ mod tests {
             .clone();
         
         // Verify cyberlink exists
-        let query_msg = QueryMsg::Cyberlink { id: Uint64::from(numeric_id) };
+        let query_msg = QueryMsg::CyberlinkById { id: formatted_id.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
         let _: CyberlinkState = from_json(&res).unwrap();
         
         // Test that non-admin cannot delete
-        let delete_msg = ExecuteMsg::DeleteCyberlink { id: Uint64::from(numeric_id) };
+        let delete_msg = ExecuteMsg::DeleteCyberlink { id: formatted_id.clone() };
         let other_info = message_info(&other_user, &[]);
         let err = execute(deps.as_mut(), mock_env(), other_info, delete_msg.clone()).unwrap_err();
         assert!(matches!(err, ContractError::Unauthorized {}));
@@ -457,7 +450,8 @@ mod tests {
         
         // Verify cyberlink is marked as deleted (query should fail)
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
-        assert!(err.to_string().contains("deleted cyberlink"), "Query for deleted cyberlink should fail");
+        println!("Error: {:?}", err);
+        assert!(err.to_string().contains("cyberlink has been deleted"), "Query for deleted cyberlink should fail");
         
         // Create another cyberlink for admin deletion test
         let cyberlink2 = Cyberlink {
@@ -470,24 +464,24 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
         let res = execute(deps.as_mut(), mock_env(), executor_info, msg).unwrap();
         
-        let numeric_id2 = res.attributes
+        let formatted_id2 = res.attributes
             .iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
+            .find(|attr| attr.key == "formatted_id")
+            .map(|attr| attr.value.clone())
             .unwrap();
         
         // Admin deletes the cyberlink
-        let delete_msg2 = ExecuteMsg::DeleteCyberlink { id: Uint64::from(numeric_id2) };
+        let delete_msg2 = ExecuteMsg::DeleteCyberlink { id: formatted_id2.clone() };
         let res = execute(deps.as_mut(), mock_env(), admin_info, delete_msg2).unwrap();
         assert_eq!(res.attributes[0].value, "delete_cyberlink");
         
         // Verify second cyberlink is also deleted
-        let query_msg2 = QueryMsg::Cyberlink { id: Uint64::from(numeric_id2) };
+        let query_msg2 = QueryMsg::CyberlinkById { id: formatted_id2.clone() };
         let err = query(deps.as_ref(), mock_env(), query_msg2).unwrap_err();
-        assert!(err.to_string().contains("deleted cyberlink"), "Query for deleted cyberlink should fail");
+        assert!(err.to_string().contains("cyberlink has been deleted"), "Query for deleted cyberlink should fail");
         
         // Query by formatted ID should also fail
-        let formatted_query = QueryMsg::CyberlinkByFormattedId { formatted_id };
+        let formatted_query = QueryMsg::CyberlinkById { id: formatted_id2.clone() };
         let err = query(deps.as_ref(), mock_env(), formatted_query).unwrap_err();
         assert!(err.to_string().contains("not found") || err.to_string().contains("deleted"), 
                 "Query by formatted ID should fail for deleted cyberlink");
@@ -533,10 +527,11 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
-        let first_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
-            .unwrap();
+        let formatted_id = res.attributes.iter()
+            .find(|attr| attr.key == "formatted_id")
+            .unwrap()
+            .value
+            .clone();
         
         // Create a mock environment with the second timestamp
         let mut env2 = mock_env();
@@ -587,7 +582,7 @@ mod tests {
             value: Some("Updated first cyberlink".to_string()),
         };
         let msg = ExecuteMsg::UpdateCyberlink { 
-            id: first_id,
+            id: formatted_id.clone(),
             cyberlink: update_cyberlink 
         };
         let info = message_info(&test_user, &[]);
@@ -670,7 +665,7 @@ mod tests {
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks (created or updated) between time3 and time4");
         
         // Find the updated cyberlink
-        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == first_id);
+        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == formatted_id);
         assert!(updated_cyberlink.is_some(), "Should include the updated cyberlink");
         
         // Test 7: Query with pagination
@@ -740,10 +735,11 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
-        let first_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
-            .unwrap();
+        let formatted_id = res.attributes.iter()
+            .find(|attr| attr.key == "formatted_id")
+            .unwrap()
+            .value
+            .clone();
         
         // Create second cyberlink at time2
         let mut env2 = mock_env();
@@ -770,7 +766,7 @@ mod tests {
             value: Some("Updated first cyberlink".to_string()),
         };
         let msg = ExecuteMsg::UpdateCyberlink { 
-            id: first_id,
+            id: formatted_id.clone(),
             cyberlink: update_cyberlink 
         };
         let info = message_info(&test_user, &[]);
@@ -921,7 +917,8 @@ mod tests {
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Check that formatted_id was returned in response
-        let formatted_id = response.attributes.iter()
+        let formatted_id = response.attributes
+            .iter()
             .find(|attr| attr.key == "formatted_id")
             .unwrap()
             .value
@@ -930,8 +927,8 @@ mod tests {
         assert_eq!(formatted_id, "Post:1");
 
         // Query by formatted ID
-        let query_msg = QueryMsg::CyberlinkByFormattedId {
-            formatted_id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkById {
+            id: formatted_id.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&response).unwrap();
@@ -952,7 +949,8 @@ mod tests {
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Check that formatted_id incremented correctly
-        let formatted_id2 = response.attributes.iter()
+        let formatted_id2 = response.attributes
+            .iter()
             .find(|attr| attr.key == "formatted_id")
             .unwrap()
             .value
@@ -986,7 +984,8 @@ mod tests {
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Check that formatted_id for the new type starts at 1
-        let comment_id = response.attributes.iter()
+        let comment_id = response.attributes
+            .iter()
             .find(|attr| attr.key == "formatted_id")
             .unwrap()
             .value
@@ -1043,11 +1042,12 @@ mod tests {
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Get the ID from the response
-        let numeric_id = response.attributes
+        let formatted_id = response.attributes
             .iter()
-            .find(|attr| attr.key == "numeric_id")
-            .map(|attr| attr.value.parse::<u64>().unwrap())
-            .unwrap();
+            .find(|attr| attr.key == "formatted_id")
+            .unwrap()
+            .value
+            .clone();
 
         // Try to update the cyberlink with a different type (should fail)
         let updated_cyberlink = Cyberlink {
@@ -1058,7 +1058,7 @@ mod tests {
         };
         
         let update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: updated_cyberlink,
         };
         
@@ -1066,7 +1066,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), user_info.clone(), update_msg).unwrap_err();
         match err {
             ContractError::CannotChangeType { id, original_type, new_type } => {
-                assert_eq!(id, numeric_id);
+                assert_eq!(id, formatted_id.clone());
                 assert_eq!(original_type, "Post");
                 assert_eq!(new_type, "Comment");
             },
@@ -1082,7 +1082,7 @@ mod tests {
         };
         
         let valid_update_msg = ExecuteMsg::UpdateCyberlink {
-            id: numeric_id,
+            id: formatted_id.clone(),
             cyberlink: valid_update,
         };
         
@@ -1090,8 +1090,8 @@ mod tests {
         assert_eq!(update_response.attributes[0].value, "update_cyberlink");
         
         // Query to verify the update worked
-        let query_msg = QueryMsg::Cyberlink { 
-            id: Uint64::from(numeric_id)
+        let query_msg = QueryMsg::CyberlinkById { 
+            id: formatted_id.clone()
         };
         let query_response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let updated_state: CyberlinkState = from_json(&query_response).unwrap();
@@ -1157,21 +1157,21 @@ mod tests {
 
         // Delete the cyberlink
         let delete_msg = ExecuteMsg::DeleteCyberlink {
-            id: Uint64::from(numeric_id),
+            id: formatted_id.clone(),
         };
         let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), mock_env(), admin_info, delete_msg).unwrap();
 
         // Verify the numeric ID is marked as deleted
-        let query_msg = QueryMsg::Cyberlink { 
-            id: Uint64::from(numeric_id) 
+        let query_msg = QueryMsg::CyberlinkById {
+            id: formatted_id.clone(),
         };
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
         assert!(err.to_string().contains("deleted cyberlink"));
 
         // Verify the formatted ID entry still exists in storage but is considered deleted
-        let query_msg = QueryMsg::CyberlinkByFormattedId {
-            formatted_id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkById {
+            id: formatted_id.clone(),
         };
         // This should return not_found error because we detect the linked numeric ID is deleted
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
@@ -1181,5 +1181,114 @@ mod tests {
         // (This is implementation specific, but demonstrates the state is preserved)
         let check_state = NAMED_CYBERLINKS.load(deps.as_ref().storage, &formatted_id);
         assert!(check_state.is_ok(), "Formatted ID entry should still exist in storage");
+    }
+
+    #[test]
+    fn test_update_and_query_by_formatted_id() {
+        let mut deps = mock_dependencies();
+        let admin = deps.api.addr_make("admin");
+        let user = deps.api.addr_make("user");
+
+        // Setup test environment
+        let instantiate_msg = InstantiateMsg {
+            admins: vec![admin.to_string()],
+            executers: vec![user.to_string()], // User can execute
+            semantic_cores: Vec::new(),
+        };
+        let info = message_info(&admin, &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), instantiate_msg).unwrap();
+
+        // Create a Type (admin only)
+        let type_msg = Cyberlink {
+            type_: "Type".to_string(),
+            from: None,
+            to: None,
+            value: None,
+        };
+        let msg = ExecuteMsg::CreateNamedCyberlink {
+            name: "Article".to_string(),
+            cyberlink: type_msg,
+        };
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // Create an Article cyberlink as the user
+        let initial_content = "Initial article content".to_string();
+        let cyberlink = Cyberlink {
+            type_: "Article".to_string(),
+            from: None,
+            to: None,
+            value: Some(initial_content.clone()),
+        };
+        let msg = ExecuteMsg::CreateCyberlink {
+            cyberlink: cyberlink.clone(),
+        };
+        let user_info = message_info(&user, &[]);
+        let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
+        
+        let formatted_id = response.attributes
+            .iter()
+            .find(|attr| attr.key == "formatted_id")
+            .unwrap()
+            .value
+            .clone();
+        
+        assert_eq!(formatted_id, "Article:1");
+
+        // Query by formatted ID initially
+        let query_msg = QueryMsg::CyberlinkById {
+            id: formatted_id.clone(),
+        };
+        let response = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
+        let initial_state: CyberlinkState = from_json(&response).unwrap();
+
+        assert_eq!(initial_state.type_, "Article");
+        assert_eq!(initial_state.value, initial_content);
+        assert_eq!(initial_state.owner, user);
+        assert!(initial_state.updated_at.is_none(), "updated_at should be None initially");
+
+        // Update the cyberlink (user owns it, so they can update)
+        let updated_content = "Updated article content".to_string();
+        let updated_cyberlink = Cyberlink {
+            type_: "Article".to_string(), // Must be the same type
+            from: None, // Cannot change from/to
+            to: None, // Cannot change from/to
+            value: Some(updated_content.clone()),
+        };
+        
+        let update_msg = ExecuteMsg::UpdateCyberlink {
+            id: formatted_id.clone(),
+            cyberlink: updated_cyberlink,
+        };
+        
+        // Use a new env with a later timestamp for the update
+        let mut update_env = mock_env();
+        update_env.block.time = update_env.block.time.plus_seconds(100);
+        
+        let update_response = execute(deps.as_mut(), update_env.clone(), user_info.clone(), update_msg).unwrap();
+        assert_eq!(update_response.attributes[0].value, "update_cyberlink");
+
+        // Query by formatted ID again after update
+        let response = query(deps.as_ref(), update_env.clone(), query_msg.clone()).unwrap();
+        let updated_state: CyberlinkState = from_json(&response).unwrap();
+
+        // Verify the state reflects the update
+        assert_eq!(updated_state.type_, "Article");
+        assert_eq!(updated_state.from, "Any".to_string()); // Should still be None
+        assert_eq!(updated_state.to, "Any".to_string()); // Should still be None
+        assert_eq!(updated_state.value, updated_content); // Value should be updated
+        assert_eq!(updated_state.owner, user); // Owner should remain the same
+        assert!(updated_state.updated_at.is_some(), "updated_at should be Some after update");
+        assert_eq!(updated_state.updated_at.unwrap(), update_env.block.time, "updated_at timestamp should match update time");
+        assert_eq!(updated_state.created_at, mock_env().block.time, "created_at should not change");
+
+        // Now delete the cyberlink (Admin action)
+        let delete_msg = ExecuteMsg::DeleteCyberlink { id: formatted_id.clone() };
+        let admin_info = message_info(&admin, &[]);
+        execute(deps.as_mut(), update_env.clone(), admin_info, delete_msg).unwrap();
+
+        // Query by formatted ID after delete (should fail)
+        let err = query(deps.as_ref(), update_env, query_msg).unwrap_err();
+        assert!(err.to_string().contains("not found") || err.to_string().contains("deleted"), 
+                "Query by formatted ID should fail for deleted cyberlink");
     }
 }
