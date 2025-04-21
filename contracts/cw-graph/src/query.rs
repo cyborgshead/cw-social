@@ -1,4 +1,4 @@
-use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
+use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_GIDS, GID, NAMED_CYBERLINKS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Deps, Env, Order, StdError, StdResult, Timestamp, Uint64};
 use cw_storage_plus::Bound;
@@ -6,13 +6,13 @@ use cw_storage_plus::Bound;
 use crate::msg::CountsResponse;
 
 pub fn query_last_gid(deps: Deps) -> StdResult<Uint64> {
-    let last_id = ID.load(deps.storage)?;
+    let last_id = GID.load(deps.storage)?;
     Ok(Uint64::new(last_id))
 }
 
 pub fn query_cyberlink_by_gid(deps: Deps, id: Uint64) -> StdResult<CyberlinkState> {
     // Check if the cyberlink is deleted
-    if DELETED_IDS.has(deps.storage, id.u64()) {
+    if DELETED_GIDS.has(deps.storage, id.u64()) {
         return Err(StdError::not_found("deleted cyberlink"));
     }
 
@@ -141,7 +141,7 @@ pub fn query_cyberlinks_by_to(deps: Deps, to: String, start_after: Option<u64>, 
         .collect()
 }
 
-pub fn query_cyberlinks_by_ids(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, CyberlinkState)>> {
+pub fn query_cyberlinks_by_fids(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, CyberlinkState)>> {
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
@@ -149,12 +149,12 @@ pub fn query_cyberlinks_by_ids(deps: Deps, start_after: Option<String>, limit: O
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| -> StdResult<Option<(String, CyberlinkState)>> {
-            let (formatted_id, global_id) = item?;
-            if DELETED_IDS.has(deps.storage, global_id) {
+            let (fid, gid) = item?;
+            if DELETED_GIDS.has(deps.storage, gid) {
                 return Ok(None); // Skip deleted
             }
-            match cyberlinks().may_load(deps.storage, global_id)? {
-                Some(state) => Ok(Some((formatted_id, state))),
+            match cyberlinks().may_load(deps.storage, gid)? {
+                Some(state) => Ok(Some((fid, state))),
                 None => Ok(None), // Skip if GID not found in cyberlinks (should be rare)
             }
         })
@@ -169,7 +169,7 @@ pub fn query_cyberlinks_set_by_gids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<
 
     for id in ids {
         // Skip deleted cyberlinks
-        if DELETED_IDS.has(deps.storage, id) {
+        if DELETED_GIDS.has(deps.storage, id) {
             continue;
         }
         // Use may_load to handle non-existent IDs gracefully
@@ -285,33 +285,33 @@ pub fn query_cyberlinks_by_owner_time_any(
     Ok(result)
 }
 
-pub fn query_cyberlink_by_formatted_id(deps: Deps, formatted_id: String) -> StdResult<CyberlinkState> {
+pub fn query_cyberlink_by_fid(deps: Deps, fid: String) -> StdResult<CyberlinkState> {
     // First try to load directly from NAMED_CYBERLINKS
-    let global_id = NAMED_CYBERLINKS.load(deps.storage, &formatted_id)?;
-    if DELETED_IDS.has(deps.storage, global_id) {
+    let gid = NAMED_CYBERLINKS.load(deps.storage, &fid)?;
+    if DELETED_GIDS.has(deps.storage, gid) {
         return Err(StdError::not_found("deleted cyberlink"));
     }
 
-    let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    let cyberlink_state = cyberlinks().load(deps.storage, gid)?;
 
     Ok(cyberlink_state)
 }
 
-pub fn query_cyberlinks_set_by_ids(deps: Deps, ids: Vec<String>) -> StdResult<Vec<(String, CyberlinkState)>> {
+pub fn query_cyberlinks_set_by_fids(deps: Deps, fids: Vec<String>) -> StdResult<Vec<(String, CyberlinkState)>> {
     let mut links: Vec<(String, CyberlinkState)> = vec![];
 
-    for formatted_id in ids {
+    for fid in fids {
         // Load the global ID corresponding to the formatted ID
-        match NAMED_CYBERLINKS.load(deps.storage, &formatted_id) {
-            Ok(global_id) => {
+        match NAMED_CYBERLINKS.load(deps.storage, &fid) {
+            Ok(gid) => {
                 // Check if the cyberlink is deleted
-                if DELETED_IDS.has(deps.storage, global_id) {
+                if DELETED_GIDS.has(deps.storage, gid) {
                     continue; // Skip deleted cyberlinks
                 }
                 // Load the cyberlink state
-                match cyberlinks().load(deps.storage, global_id) {
+                match cyberlinks().load(deps.storage, gid) {
                     Ok(cyberlink_state) => {
-                        links.push((formatted_id.clone(), cyberlink_state));
+                        links.push((fid.clone(), cyberlink_state));
                     },
                     Err(_) => continue, // Skip if loading fails (should be rare if NAMED_CYBERLINKS exists)
                 }
@@ -356,7 +356,7 @@ pub struct StateResponse {
 }
 
 // Tier 4 Query: Get Counts
-pub fn query_get_counts(
+pub fn query_graph_stats(
     deps: Deps,
     owner: Option<String>,
     type_: Option<String>,

@@ -275,23 +275,23 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
         // Extract the numeric ID from the response
-        let formatted_id = res.attributes
+        let fid = res.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .map(|attr| attr.value.clone())
             .unwrap();
         
         // Update cyberlink with different content
         let new_value = Some("Updated content".to_string());
         let update_msg = ExecuteMsg::UpdateCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: new_value.clone(),
         };
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), update_msg).unwrap();
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify the update was successful
-        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByFID { fid: fid.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
         
@@ -303,7 +303,7 @@ mod tests {
         let other_user = deps.api.addr_make("other_user");
         let other_info = message_info(&other_user, &[]);
         let update_msg_unauth = ExecuteMsg::UpdateCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: new_value.clone(), // Use the same updated value
         };
         
@@ -314,7 +314,7 @@ mod tests {
         // Admin can update any cyberlink
         let admin_new_value = Some("Admin updated".to_string());
         let admin_update_msg = ExecuteMsg::UpdateCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: admin_new_value.clone(),
         };
         
@@ -323,7 +323,7 @@ mod tests {
         assert_eq!(res.attributes[0].value, "update_cyberlink");
         
         // Verify admin update
-        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByFID { fid: fid.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&res).unwrap();
 
@@ -374,20 +374,20 @@ mod tests {
         let user_info = message_info(&user, &[]);
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
-        let formatted_id = res.attributes
+        let fid = res.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
         
         // Verify cyberlink exists
-        let query_msg = QueryMsg::CyberlinkByID { id: formatted_id.clone() };
+        let query_msg = QueryMsg::CyberlinkByFID { fid: fid.clone() };
         let res = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
         let _: CyberlinkState = from_json(&res).unwrap();
         
         // Test that non-admin cannot delete
-        let delete_msg = ExecuteMsg::DeleteCyberlink { id: formatted_id.clone() };
+        let delete_msg = ExecuteMsg::DeleteCyberlink { fid: fid.clone() };
         let other_info = message_info(&other_user, &[]);
         let err = execute(deps.as_mut(), mock_env(), other_info, delete_msg.clone()).unwrap_err();
         assert!(matches!(err, ContractError::Unauthorized {}));
@@ -416,24 +416,24 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink2 };
         let res = execute(deps.as_mut(), mock_env(), executor_info, msg).unwrap();
         
-        let formatted_id2 = res.attributes
+        let fid2 = res.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .map(|attr| attr.value.clone())
             .unwrap();
         
         // Admin deletes the cyberlink
-        let delete_msg2 = ExecuteMsg::DeleteCyberlink { id: formatted_id2.clone() };
+        let delete_msg2 = ExecuteMsg::DeleteCyberlink { fid: fid2.clone() };
         let res = execute(deps.as_mut(), mock_env(), admin_info, delete_msg2).unwrap();
         assert_eq!(res.attributes[0].value, "delete_cyberlink");
         
         // Verify second cyberlink is also deleted
-        let query_msg2 = QueryMsg::CyberlinkByID { id: formatted_id2.clone() };
+        let query_msg2 = QueryMsg::CyberlinkByFID { fid: fid2.clone() };
         let err = query(deps.as_ref(), mock_env(), query_msg2).unwrap_err();
         assert!(err.to_string().contains("deleted cyberlink"), "Query for deleted cyberlink should fail");
         
         // Query by formatted ID should also fail
-        let formatted_query = QueryMsg::CyberlinkByID { id: formatted_id2.clone() };
+        let formatted_query = QueryMsg::CyberlinkByFID { fid: fid2.clone() };
         let err = query(deps.as_ref(), mock_env(), formatted_query).unwrap_err();
         assert!(err.to_string().contains("not found") || err.to_string().contains("deleted"), 
                 "Query by formatted ID should fail for deleted cyberlink");
@@ -479,13 +479,13 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
-        let formatted_id = res.attributes.iter()
-            .find(|attr| attr.key == "formatted_id")
+        let fid = res.attributes.iter()
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
-        let first_numeric_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
+        let first_gid = res.attributes.iter()
+            .find(|attr| attr.key == "gid")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
@@ -504,7 +504,7 @@ mod tests {
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env2.clone(), info, msg).unwrap();
         let _second_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
+            .find(|attr| attr.key == "gid")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
@@ -523,7 +523,7 @@ mod tests {
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env3.clone(), info, msg).unwrap();
         let _third_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
+            .find(|attr| attr.key == "gid")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
@@ -533,7 +533,7 @@ mod tests {
         
         let updated_value = Some("Updated first cyberlink".to_string());
         let msg = ExecuteMsg::UpdateCyberlink { 
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: updated_value.clone(),
         };
         let info = message_info(&test_user, &[]);
@@ -542,7 +542,7 @@ mod tests {
         // Test 1: Query all cyberlinks by owner (no time filter)
         let query_msg = QueryMsg::CyberlinksByOwner {
             owner: test_user.to_string(),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
@@ -555,7 +555,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -568,7 +568,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time2,
             end_time: Some(time3),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env2.clone(), query_msg).unwrap();
@@ -581,7 +581,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -594,7 +594,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
@@ -607,7 +607,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
@@ -616,7 +616,7 @@ mod tests {
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks (created or updated) between time3 and time4");
         
         // Find the updated cyberlink
-        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == first_numeric_id);
+        let updated_cyberlink = cyberlinks.iter().find(|(id, _)| *id == first_gid);
         assert!(updated_cyberlink.is_some(), "Should include the updated cyberlink");
         
         // Test 7: Query with pagination
@@ -624,7 +624,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -639,7 +639,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
-            start_after: Some(start_after),
+            start_after_gid: Some(start_after),
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -686,13 +686,13 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: cyberlink1 };
         let info = message_info(&test_user, &[]);
         let res = execute(deps.as_mut(), env1.clone(), info, msg).unwrap();
-        let formatted_id = res.attributes.iter()
-            .find(|attr| attr.key == "formatted_id")
+        let fid = res.attributes.iter()
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
-        let first_numeric_id = res.attributes.iter()
-            .find(|attr| attr.key == "numeric_id")
+        let first_gid = res.attributes.iter()
+            .find(|attr| attr.key == "gid")
             .map(|attr| attr.value.parse::<u64>().unwrap())
             .unwrap();
         
@@ -716,7 +716,7 @@ mod tests {
         
         let updated_value = Some("Updated first cyberlink".to_string());
         let msg = ExecuteMsg::UpdateCyberlink { 
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: updated_value.clone(),
         };
         let info = message_info(&test_user, &[]);
@@ -741,7 +741,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -754,7 +754,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time2),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -767,7 +767,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
@@ -780,7 +780,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time3,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: None,
         };
         let res = query(deps.as_ref(), env3.clone(), query_msg).unwrap();
@@ -789,7 +789,7 @@ mod tests {
         assert_eq!(cyberlinks.len(), 2, "Should return 2 cyberlinks created or updated between time3 and time4");
         
         // Check that we have both the updated first cyberlink and the third cyberlink
-        let has_updated = cyberlinks.iter().any(|(id, _)| *id == first_numeric_id);
+        let has_updated = cyberlinks.iter().any(|(id, _)| *id == first_gid);
         let has_third = cyberlinks.iter().any(|(_, d)| d.value == "Third cyberlink");
         
         assert!(has_updated, "Should include the updated first cyberlink");
@@ -800,7 +800,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
-            start_after: None,
+            start_after_gid: None,
             limit: Some(2),
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -815,7 +815,7 @@ mod tests {
             owner: test_user.to_string(),
             start_time: time1,
             end_time: Some(time4),
-            start_after: Some(start_after),
+            start_after_gid: Some(start_after),
             limit: None,
         };
         let res = query(deps.as_ref(), env1.clone(), query_msg).unwrap();
@@ -826,7 +826,7 @@ mod tests {
     }
 
     #[test]
-    fn test_formatted_ids() {
+    fn test_fids() {
         let mut deps = mock_dependencies();
         let test_user = deps.api.addr_make("test_user");
         let admin = deps.api.addr_make("admin");
@@ -866,19 +866,19 @@ mod tests {
         let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
-        // Check that formatted_id was returned in response
-        let formatted_id = response.attributes
+        // Check that fid was returned in response
+        let fid = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
         
-        assert_eq!(formatted_id, "Post:1");
+        assert_eq!(fid, "Post:1");
 
         // Query by formatted ID
-        let query_msg = QueryMsg::CyberlinkByID {
-            id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkByFID {
+            fid: fid.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let cyberlink_state: CyberlinkState = from_json(&response).unwrap();
@@ -898,15 +898,15 @@ mod tests {
         };
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
-        // Check that formatted_id incremented correctly
-        let formatted_id2 = response.attributes
+        // Check that fid incremented correctly
+        let fid2 = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
         
-        assert_eq!(formatted_id2, "Post:2");
+        assert_eq!(fid2, "Post:2");
 
         // Create a different type
         let comment_type = Cyberlink {
@@ -933,10 +933,10 @@ mod tests {
         };
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
-        // Check that formatted_id for the new type starts at 1
+        // Check that fid for the new type starts at 1
         let comment_id = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
@@ -992,9 +992,9 @@ mod tests {
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
 
         // Get the ID from the response
-        let formatted_id = response.attributes
+        let fid = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
@@ -1003,7 +1003,7 @@ mod tests {
         let valid_new_value = Some("Valid update".to_string());
         
         let valid_update_msg = ExecuteMsg::UpdateCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: valid_new_value.clone(),
         };
         
@@ -1011,8 +1011,8 @@ mod tests {
         assert_eq!(update_response.attributes[0].value, "update_cyberlink");
 
         // Query to verify the update worked
-        let query_msg = QueryMsg::CyberlinkByID { 
-            id: formatted_id.clone()
+        let query_msg = QueryMsg::CyberlinkByFID {
+            fid: fid.clone()
         };
         let query_response = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let updated_state: CyberlinkState = from_json(&query_response).unwrap();
@@ -1022,7 +1022,7 @@ mod tests {
     }
 
     #[test]
-    fn test_delete_keeps_formatted_ids() {
+    fn test_delete_keeps_fids() {
         let mut deps = mock_dependencies();
         let admin = deps.api.addr_make("admin");
         let test_user = deps.api.addr_make("test_user");
@@ -1062,30 +1062,30 @@ mod tests {
         let user_info = message_info(&test_user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
-        let formatted_id = response.attributes
+        let fid = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
 
         // Delete the cyberlink
         let delete_msg = ExecuteMsg::DeleteCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
         };
         let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), mock_env(), admin_info, delete_msg).unwrap();
 
         // Verify the numeric ID is marked as deleted
-        let query_msg = QueryMsg::CyberlinkByID {
-            id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkByFID {
+            fid: fid.clone(),
         };
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
         assert!(err.to_string().contains("deleted cyberlink"));
 
         // Verify the formatted ID entry still exists in storage but is considered deleted
-        let query_msg = QueryMsg::CyberlinkByID {
-            id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkByFID {
+            fid: fid.clone(),
         };
         // This should return not_found error because we detect the linked numeric ID is deleted
         let err = query(deps.as_ref(), mock_env(), query_msg).unwrap_err();
@@ -1093,12 +1093,12 @@ mod tests {
 
         // However, we can directly check if the NAMED_CYBERLINKS entry still exists
         // (This is implementation specific, but demonstrates the state is preserved)
-        let check_state = NAMED_CYBERLINKS.load(deps.as_ref().storage, &formatted_id);
+        let check_state = NAMED_CYBERLINKS.load(deps.as_ref().storage, &fid);
         assert!(check_state.is_ok(), "Formatted ID entry should still exist in storage");
     }
 
     #[test]
-    fn test_update_and_query_by_formatted_id() {
+    fn test_update_and_query_by_fid() {
         let mut deps = mock_dependencies();
         let admin = deps.api.addr_make("admin");
         let user = deps.api.addr_make("user");
@@ -1139,18 +1139,18 @@ mod tests {
         let user_info = message_info(&user, &[]);
         let response = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
-        let formatted_id = response.attributes
+        let fid = response.attributes
             .iter()
-            .find(|attr| attr.key == "formatted_id")
+            .find(|attr| attr.key == "fid")
             .unwrap()
             .value
             .clone();
         
-        assert_eq!(formatted_id, "Article:1");
+        assert_eq!(fid, "Article:1");
 
         // Query by formatted ID initially
-        let query_msg = QueryMsg::CyberlinkByID {
-            id: formatted_id.clone(),
+        let query_msg = QueryMsg::CyberlinkByFID {
+            fid: fid.clone(),
         };
         let response = query(deps.as_ref(), mock_env(), query_msg.clone()).unwrap();
         let initial_state: CyberlinkState = from_json(&response).unwrap();
@@ -1164,7 +1164,7 @@ mod tests {
         let updated_content = "Updated article content".to_string();
         
         let update_msg = ExecuteMsg::UpdateCyberlink {
-            id: formatted_id.clone(),
+            fid: fid.clone(),
             value: Some(updated_content.clone()),
         };
         
@@ -1190,7 +1190,7 @@ mod tests {
         assert_eq!(updated_state.created_at, mock_env().block.time, "created_at should not change");
 
         // Now delete the cyberlink (Admin action)
-        let delete_msg = ExecuteMsg::DeleteCyberlink { id: formatted_id.clone() };
+        let delete_msg = ExecuteMsg::DeleteCyberlink { fid: fid.clone() };
         let admin_info = message_info(&admin, &[]);
         execute(deps.as_mut(), update_env.clone(), admin_info, delete_msg).unwrap();
 
@@ -1227,7 +1227,7 @@ mod tests {
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: post1_user1 };
         let user1_info = message_info(&user1, &[]);
         let res1 = execute(deps.as_mut(), mock_env(), user1_info.clone(), msg).unwrap();
-        let post1_user1_id = res1.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
+        let post1_user1_id = res1.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
 
         let post2_user1 = Cyberlink { type_: "Post".to_string(), from: None, to: None, value: Some("User1 Post 2".to_string()) };
         let msg = ExecuteMsg::CreateCyberlink { cyberlink: post2_user1 };
@@ -1246,7 +1246,7 @@ mod tests {
         // --- Test GetCounts ---
 
         // Query counts for User1
-        let query_msg = QueryMsg::GetCounts { owner: Some(user1.to_string()), type_: None };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user1.to_string()), type_: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(3))); // 2 Posts + 1 Comment
@@ -1254,7 +1254,7 @@ mod tests {
         assert_eq!(counts.owner_type_count, None);
 
         // Query counts for type "Post"
-        let query_msg = QueryMsg::GetCounts { owner: None, type_: Some("Post".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: None, type_: Some("Post".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, None);
@@ -1262,7 +1262,7 @@ mod tests {
         assert_eq!(counts.owner_type_count, None);
 
         // Query counts for User1 and type "Post"
-        let query_msg = QueryMsg::GetCounts { owner: Some(user1.to_string()), type_: Some("Post".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user1.to_string()), type_: Some("Post".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(3)));
@@ -1270,7 +1270,7 @@ mod tests {
         assert_eq!(counts.owner_type_count, Some(Uint64::new(2))); // User1 Post1, User1 Post2
 
         // Query counts for User1 and type "Comment"
-        let query_msg = QueryMsg::GetCounts { owner: Some(user1.to_string()), type_: Some("Comment".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user1.to_string()), type_: Some("Comment".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(3)));
@@ -1278,7 +1278,7 @@ mod tests {
         assert_eq!(counts.owner_type_count, Some(Uint64::new(1))); // User1 Comment1
 
         // Query counts for User2 and type "Post"
-        let query_msg = QueryMsg::GetCounts { owner: Some(user2.to_string()), type_: Some("Post".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user2.to_string()), type_: Some("Post".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(1)));
@@ -1286,7 +1286,7 @@ mod tests {
         assert_eq!(counts.owner_type_count, Some(Uint64::new(1))); // User2 Post1
 
         // Query counts with no filters (should return None for all)
-        let query_msg = QueryMsg::GetCounts { owner: None, type_: None };
+        let query_msg = QueryMsg::GetGraphStats { owner: None, type_: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, None);
@@ -1295,23 +1295,23 @@ mod tests {
 
         // --- Test counts after deletion ---
         // Delete User1's first post
-        let delete_msg = ExecuteMsg::DeleteCyberlink { id: post1_user1_id };
+        let delete_msg = ExecuteMsg::DeleteCyberlink { fid: post1_user1_id };
         execute(deps.as_mut(), mock_env(), user1_info.clone(), delete_msg).unwrap();
 
         // Query counts for User1 again
-        let query_msg = QueryMsg::GetCounts { owner: Some(user1.to_string()), type_: None };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user1.to_string()), type_: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(2))); // 1 Post + 1 Comment remaining
 
         // Query counts for type "Post" again
-        let query_msg = QueryMsg::GetCounts { owner: None, type_: Some("Post".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: None, type_: Some("Post".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.type_count, Some(Uint64::new(2))); // User1 Post2, User2 Post1 remaining
 
         // Query counts for User1 and type "Post" again
-        let query_msg = QueryMsg::GetCounts { owner: Some(user1.to_string()), type_: Some("Post".to_string()) };
+        let query_msg = QueryMsg::GetGraphStats { owner: Some(user1.to_string()), type_: Some("Post".to_string()) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let counts: CountsResponse = from_json(&res).unwrap();
         assert_eq!(counts.owner_count, Some(Uint64::new(2)));
@@ -1347,32 +1347,32 @@ mod tests {
 
         // Profiles
         let res_p1 = execute(deps.as_mut(), mock_env(), user1_info.clone(), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Profile".to_string(), from: None, to: None, value: Some("User1 Profile".to_string()) } }).unwrap();
-        let profile1_fid = res_p1.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
-        let profile1_gid: u64 = res_p1.attributes.iter().find(|a| a.key == "numeric_id").unwrap().value.parse().unwrap();
+        let profile1_fid = res_p1.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
+        let profile1_gid: u64 = res_p1.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
         let res_p2 = execute(deps.as_mut(), mock_env(), user2_info.clone(), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Profile".to_string(), from: None, to: None, value: Some("User2 Profile".to_string()) } }).unwrap();
-        let profile2_fid = res_p2.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
-        let profile2_gid: u64 = res_p2.attributes.iter().find(|a| a.key == "numeric_id").unwrap().value.parse().unwrap();
+        let profile2_fid = res_p2.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
+        let profile2_gid: u64 = res_p2.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
         // Follows (User1 follows User2)
         let res_f1 = execute(deps.as_mut(), mock_env(), user1_info.clone(), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Follow".to_string(), from: Some(profile1_fid.clone()), to: Some(profile2_fid.clone()), value: None } }).unwrap();
-        let follow1_fid = res_f1.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
-        let follow1_gid: u64 = res_f1.attributes.iter().find(|a| a.key == "numeric_id").unwrap().value.parse().unwrap();
+        let follow1_fid = res_f1.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
+        let follow1_gid: u64 = res_f1.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
         // Posts
         let res_post1 = execute(deps.as_mut(), mock_env(), user1_info.clone(), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Post".to_string(), from: None, to: None, value: Some("User1 Post 1".to_string()) } }).unwrap();
-        let post1_fid = res_post1.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
-        let post1_gid: u64 = res_post1.attributes.iter().find(|a| a.key == "numeric_id").unwrap().value.parse().unwrap();
+        let post1_fid = res_post1.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
+        let post1_gid: u64 = res_post1.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
         let res_post2 = execute(deps.as_mut(), mock_env(), user2_info.clone(), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Post".to_string(), from: None, to: None, value: Some("User2 Post 1".to_string()) } }).unwrap();
-        let post2_fid = res_post2.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
-        let post2_gid: u64 = res_post2.attributes.iter().find(|a| a.key == "numeric_id").unwrap().value.parse().unwrap();
+        let post2_fid = res_post2.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
+        let post2_gid: u64 = res_post2.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
         let all_gids = vec![profile1_gid, profile2_gid, follow1_gid, post1_gid, post2_gid];
         let all_fids = vec![profile1_fid.clone(), profile2_fid.clone(), follow1_fid.clone(), post1_fid.clone(), post2_fid.clone()];
 
         // --- Test CyberlinksByGIDs (Pagination) ---
-        let query_msg = QueryMsg::CyberlinksByGIDs { start_after: None, limit: Some(3) };
+        let query_msg = QueryMsg::CyberlinksByGIDs { start_after_gid: None, limit: Some(3) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 3);
@@ -1380,24 +1380,24 @@ mod tests {
         assert_eq!(links[1].0, 2); // Base "Any"
         assert_eq!(links[2].0, 3); // Named "Profile"
 
-        let query_msg = QueryMsg::CyberlinksByGIDs { start_after: Some(links[2].0), limit: Some(10) }; // Start after GID 3
+        let query_msg = QueryMsg::CyberlinksByGIDs { start_after_gid: Some(links[2].0), limit: Some(10) }; // Start after GID 3
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         // Should return GIDs 4, 5, 6, 7, 8, 9, 10
         assert_eq!(links.len(), 7);
 
-        assert_eq!(links[0].0, 4); assert_eq!(links[0].1.formatted_id, Some("Follow".to_string()));  // Named Follow
-        assert_eq!(links[1].0, 5); assert_eq!(links[1].1.formatted_id, Some("Post".to_string()));    // Named Post
-        assert_eq!(links[2].0, 6); assert_eq!(links[2].1.formatted_id, Some(profile1_fid.clone()));  // Profile:1
-        assert_eq!(links[3].0, 7); assert_eq!(links[3].1.formatted_id, Some(profile2_fid.clone()));  // Profile:2
-        assert_eq!(links[4].0, 8); assert_eq!(links[4].1.formatted_id, Some(follow1_fid.clone()));   // Follow:1
-        assert_eq!(links[5].0, 9); assert_eq!(links[5].1.formatted_id, Some(post1_fid.clone()));     // Post:1
-        assert_eq!(links[6].0, 10); assert_eq!(links[6].1.formatted_id, Some(post2_fid.clone()));    // Post:2
+        assert_eq!(links[0].0, 4); assert_eq!(links[0].1.fid, Some("Follow".to_string()));  // Named Follow
+        assert_eq!(links[1].0, 5); assert_eq!(links[1].1.fid, Some("Post".to_string()));    // Named Post
+        assert_eq!(links[2].0, 6); assert_eq!(links[2].1.fid, Some(profile1_fid.clone()));  // Profile:1
+        assert_eq!(links[3].0, 7); assert_eq!(links[3].1.fid, Some(profile2_fid.clone()));  // Profile:2
+        assert_eq!(links[4].0, 8); assert_eq!(links[4].1.fid, Some(follow1_fid.clone()));   // Follow:1
+        assert_eq!(links[5].0, 9); assert_eq!(links[5].1.fid, Some(post1_fid.clone()));     // Post:1
+        assert_eq!(links[6].0, 10); assert_eq!(links[6].1.fid, Some(post2_fid.clone()));    // Post:2
 
         // --- Test CyberlinksSetByGIDs ---
         let actual_profile1_gid = 6;
         let actual_post2_gid = 10;
-        let query_msg = QueryMsg::CyberlinksSetByGIDs { ids: vec![actual_profile1_gid, actual_post2_gid, 999] }; // 999 doesn't exist
+        let query_msg = QueryMsg::CyberlinksSetByGIDs { gids: vec![actual_profile1_gid, actual_post2_gid, 999] }; // 999 doesn't exist
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 2);
@@ -1408,7 +1408,7 @@ mod tests {
         // Note: Order is lexicographical by formatted ID
         // All FIDs including base types and named types:
         // ["Any", "Follow", "Follow:1", "Post", "Post:1", "Post:2", "Profile", "Profile:1", "Profile:2", "Type"]
-        let query_msg = QueryMsg::CyberlinksByIDs { start_after: None, limit: Some(3) };
+        let query_msg = QueryMsg::CyberlinksByFIDs { start_after_fid: None, limit: Some(3) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(String, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 3);
@@ -1424,7 +1424,7 @@ mod tests {
         assert_eq!(links[1].0, all_fids_full[1]); // "Follow"
         assert_eq!(links[2].0, all_fids_full[2]); // "Follow:1"
 
-        let query_msg = QueryMsg::CyberlinksByIDs { start_after: Some(links[2].0.clone()), limit: Some(10) }; // Start after "Follow:1"
+        let query_msg = QueryMsg::CyberlinksByFIDs { start_after_fid: Some(links[2].0.clone()), limit: Some(10) }; // Start after "Follow:1"
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(String, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 7); // "Post", "Post:1", "Post:2", "Profile", "Profile:1", "Profile:2", "Type"
@@ -1437,7 +1437,7 @@ mod tests {
         assert_eq!(links[6].0, all_fids_full[9]);
 
         // --- Test CyberlinksSetByIDs ---
-        let query_msg = QueryMsg::CyberlinksSetByIDs { ids: vec![profile1_fid.clone(), post2_fid.clone(), "NonExistent:1".to_string()] };
+        let query_msg = QueryMsg::CyberlinksSetByFIDs { fids: vec![profile1_fid.clone(), post2_fid.clone(), "NonExistent:1".to_string()] };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(String, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 2);
@@ -1445,13 +1445,13 @@ mod tests {
         assert!(links.iter().any(|(id, _)| *id == post2_fid));
 
         // --- Test CyberlinksByType ---
-        let query_msg = QueryMsg::CyberlinksByType { type_: "Profile".to_string(), start_after: None, limit: None };
+        let query_msg = QueryMsg::CyberlinksByType { type_: "Profile".to_string(), start_after_gid: None, limit: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 2);
         assert!(links.iter().all(|(_, state)| state.type_ == "Profile"));
 
-        let query_msg = QueryMsg::CyberlinksByType { type_: "Post".to_string(), start_after: Some(post1_gid), limit: Some(1) };
+        let query_msg = QueryMsg::CyberlinksByType { type_: "Post".to_string(), start_after_gid: Some(post1_gid), limit: Some(1) };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1);
@@ -1459,7 +1459,7 @@ mod tests {
         assert_eq!(links[0].1.type_, "Post");
 
         // --- Test CyberlinksByFrom ---
-        let query_msg = QueryMsg::CyberlinksByFrom { from: profile1_fid.clone(), start_after: None, limit: None };
+        let query_msg = QueryMsg::CyberlinksByFrom { from: profile1_fid.clone(), start_after_gid: None, limit: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1);
@@ -1467,7 +1467,7 @@ mod tests {
         assert_eq!(links[0].1.from, profile1_fid);
 
         // --- Test CyberlinksByTo ---
-        let query_msg = QueryMsg::CyberlinksByTo { to: profile2_fid.clone(), start_after: None, limit: None };
+        let query_msg = QueryMsg::CyberlinksByTo { to: profile2_fid.clone(), start_after_gid: None, limit: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1);
@@ -1475,7 +1475,7 @@ mod tests {
         assert_eq!(links[0].1.to, profile2_fid);
 
         // --- Test CyberlinksByOwnerAndType ---
-        let query_msg = QueryMsg::CyberlinksByOwnerAndType { owner: user1.to_string(), type_: "Profile".to_string(), start_after: None, limit: None };
+        let query_msg = QueryMsg::CyberlinksByOwnerAndType { owner: user1.to_string(), type_: "Profile".to_string(), start_after_gid: None, limit: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1);
@@ -1483,7 +1483,7 @@ mod tests {
         assert_eq!(links[0].1.owner, user1);
         assert_eq!(links[0].1.type_, "Profile");
 
-        let query_msg = QueryMsg::CyberlinksByOwnerAndType { owner: user1.to_string(), type_: "Post".to_string(), start_after: None, limit: None };
+        let query_msg = QueryMsg::CyberlinksByOwnerAndType { owner: user1.to_string(), type_: "Post".to_string(), start_after_gid: None, limit: None };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1);
@@ -1493,17 +1493,17 @@ mod tests {
 
         // --- Test Set queries skip deleted ---
         // Delete post1
-        execute(deps.as_mut(), mock_env(), user1_info.clone(), ExecuteMsg::DeleteCyberlink { id: post1_fid.clone() }).unwrap();
+        execute(deps.as_mut(), mock_env(), user1_info.clone(), ExecuteMsg::DeleteCyberlink { fid: post1_fid.clone() }).unwrap();
 
         // Test CyberlinksSetByGIDs skips deleted
-        let query_msg = QueryMsg::CyberlinksSetByGIDs { ids: vec![post1_gid, post2_gid] };
+        let query_msg = QueryMsg::CyberlinksSetByGIDs { gids: vec![post1_gid, post2_gid] };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(u64, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1); // post1_gid should be skipped
         assert_eq!(links[0].0, post2_gid);
 
         // Test CyberlinksSetByIDs skips deleted
-        let query_msg = QueryMsg::CyberlinksSetByIDs { ids: vec![post1_fid.clone(), post2_fid.clone()] };
+        let query_msg = QueryMsg::CyberlinksSetByFIDs { fids: vec![post1_fid.clone(), post2_fid.clone()] };
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
         let links: Vec<(String, CyberlinkState)> = from_json(&res).unwrap();
         assert_eq!(links.len(), 1); // post1_fid should be skipped
