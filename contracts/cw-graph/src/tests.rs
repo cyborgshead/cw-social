@@ -1511,7 +1511,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_vertex_and_link() {
+    fn test_create_cyberlink2() {
         let mut deps = mock_dependencies();
         let admin = deps.api.addr_make("admin");
         let user = deps.api.addr_make("user");
@@ -1534,50 +1534,50 @@ mod tests {
 
         // Create an existing Thread by user
         let thread_res = execute(deps.as_mut(), mock_env(), message_info(&user, &[]), ExecuteMsg::CreateCyberlink { cyberlink: Cyberlink { type_: "Thread".to_string(), from: None, to: None, value: Some("Main Thread".to_string()) } }).unwrap();
-        let existing_thread_id = thread_res.attributes.iter().find(|a| a.key == "formatted_id").unwrap().value.clone();
+        let existing_thread_id = thread_res.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
         assert_eq!(existing_thread_id, "Thread:1");
 
         // --- Test Case 1: Success - Create Message and link FROM new Message TO existing Thread ---
         let user_info = message_info(&user, &[]);
-        let msg = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("First message".to_string()),
+        let msg = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("First message".to_string()),
             link_type: "Replies".to_string(),
             link_value: None,
-            link_from_existing_id: None, // New vertex is FROM
+            link_from_existing_id: None, // New node is FROM
             link_to_existing_id: Some(existing_thread_id.clone()), // Link TO existing thread
         };
 
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg).unwrap();
         
         // Check response attributes
-        let new_vertex_id = res.attributes.iter().find(|a| a.key == "new_vertex_id").unwrap().value.clone();
-        let link_id = res.attributes.iter().find(|a| a.key == "link_id").unwrap().value.clone();
-        assert_eq!(new_vertex_id, "Message:1"); // First message
-        assert_eq!(link_id, "Replies:1"); // First reply link
-        assert_eq!(res.attributes[0].value, "create_vertex_and_link");
+        let node_fid = res.attributes.iter().find(|a| a.key == "node_fid").unwrap().value.clone(); // Updated key
+        let link_fid = res.attributes.iter().find(|a| a.key == "link_fid").unwrap().value.clone(); // Updated key
+        assert_eq!(node_fid, "Message:1"); // First message
+        assert_eq!(link_fid, "Replies:1"); // First reply link
+        assert_eq!(res.attributes[0].value, "create_cyberlink2"); // Renamed action attribute
 
-        // Verify created vertex (Message:1)
-        let query_vertex = QueryMsg::CyberlinkByID { id: new_vertex_id.clone() };
-        let vertex_res = query(deps.as_ref(), mock_env(), query_vertex).unwrap();
-        let vertex_state: CyberlinkState = from_json(&vertex_res).unwrap();
-        assert_eq!(vertex_state.type_, "Message");
-        assert_eq!(vertex_state.value, "First message");
-        assert_eq!(vertex_state.owner, user);
+        // Verify created node (Message:1)
+        let query_node = QueryMsg::CyberlinkByFID { fid: node_fid.clone() };
+        let node_res = query(deps.as_ref(), mock_env(), query_node).unwrap();
+        let node_state: CyberlinkState = from_json(&node_res).unwrap();
+        assert_eq!(node_state.type_, "Message");
+        assert_eq!(node_state.value, "First message");
+        assert_eq!(node_state.owner, user);
 
         // Verify created link (Replies:1)
-        let query_link = QueryMsg::CyberlinkByID { id: link_id.clone() };
+        let query_link = QueryMsg::CyberlinkByFID { fid: link_fid.clone() };
         let link_res = query(deps.as_ref(), mock_env(), query_link).unwrap();
         let link_state: CyberlinkState = from_json(&link_res).unwrap();
         assert_eq!(link_state.type_, "Replies");
-        assert_eq!(link_state.from, new_vertex_id);
+        assert_eq!(link_state.from, node_fid);
         assert_eq!(link_state.to, existing_thread_id);
         assert_eq!(link_state.owner, user);
 
         // --- Test Case 2: Error - Invalid Link Specification (both None) ---
-        let msg_invalid_spec1 = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("Invalid msg".to_string()),
+        let msg_invalid_spec1 = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("Invalid msg".to_string()),
             link_type: "Replies".to_string(),
             link_value: None,
             link_from_existing_id: None, // Error: both None
@@ -1587,9 +1587,9 @@ mod tests {
         assert!(matches!(err, ContractError::InvalidLinkSpecification {}));
 
         // --- Test Case 3: Error - Invalid Link Specification (both Some) ---
-        let msg_invalid_spec2 = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("Invalid msg".to_string()),
+        let msg_invalid_spec2 = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("Invalid msg".to_string()),
             link_type: "Replies".to_string(),
             link_value: None,
             link_from_existing_id: Some(existing_thread_id.clone()), // Error: both Some
@@ -1599,9 +1599,9 @@ mod tests {
         assert!(matches!(err, ContractError::InvalidLinkSpecification {}));
 
         // --- Test Case 4: Error - Link Type Not Exists ---
-        let msg_bad_link_type = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("Another message".to_string()),
+        let msg_bad_link_type = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("Another message".to_string()),
             link_type: "InvalidLinkType".to_string(), // This type doesn't exist
             link_value: None,
             link_from_existing_id: None,
@@ -1610,10 +1610,10 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), user_info.clone(), msg_bad_link_type).unwrap_err();
         assert!(matches!(err, ContractError::TypeNotExists { type_: t } if t == "InvalidLinkType"));
 
-        // --- Test Case 5: Error - Existing Vertex Not Exists ---
-        let msg_bad_target = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("Another message".to_string()),
+        // --- Test Case 5: Error - Existing Node Not Exists ---
+        let msg_bad_target = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("Another message".to_string()),
             link_type: "Replies".to_string(),
             link_value: None,
             link_from_existing_id: None,
@@ -1623,9 +1623,9 @@ mod tests {
         assert!(matches!(err, ContractError::ToNotExists { to: t } if t == "Thread:999"));
 
         // --- Test Case 6: Error - Type Conflict (e.g., Replies expects Message -> Thread, try Thread -> Thread) ---
-         let msg_type_conflict = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Thread".to_string(), // Trying to create a Thread vertex...
-            vertex_value: Some("Nested Thread?".to_string()),
+         let msg_type_conflict = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Thread".to_string(), // Trying to create a Thread node...
+            node_value: Some("Nested Thread?".to_string()),
             link_type: "Replies".to_string(), // ... but link it using Replies (expects Message -> Thread)
             link_value: None,
             link_from_existing_id: None, // From new Thread
@@ -1634,31 +1634,31 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), user_info.clone(), msg_type_conflict).unwrap_err();
         assert!(matches!(err, ContractError::TypeConflict { .. })); // Detailed check might be needed if specific fields matter
 
-        // --- Test Case 7: Success - Create vertex and link FROM existing TO new ---
+        // --- Test Case 7: Success - Create node and link FROM existing TO new ---
         // First, create another type "IsBasedOn" (e.g., Message -> Message)
         execute(deps.as_mut(), mock_env(), admin_info.clone(), ExecuteMsg::CreateNamedCyberlink { name: "IsBasedOn".to_string(), cyberlink: Cyberlink { type_: "Type".to_string(), from: Some("Message".to_string()), to: Some("Message".to_string()), value: None } }).unwrap();
 
         // Now create a new message based on Message:1
-        let msg_link_from_existing = ExecuteMsg::CreateVertexAndLink {
-            vertex_type: "Message".to_string(),
-            vertex_value: Some("Follow-up message".to_string()),
+        let msg_link_from_existing = ExecuteMsg::CreateCyberlink2 {
+            node_type: "Message".to_string(),
+            node_value: Some("Follow-up message".to_string()),
             link_type: "IsBasedOn".to_string(),
             link_value: None,
             link_from_existing_id: Some("Message:1".to_string()), // Link FROM Message:1
             link_to_existing_id: None, // TO the new message
         };
         let res = execute(deps.as_mut(), mock_env(), user_info.clone(), msg_link_from_existing).unwrap();
-        let new_vertex_id_2 = res.attributes.iter().find(|a| a.key == "new_vertex_id").unwrap().value.clone();
-        let link_id_2 = res.attributes.iter().find(|a| a.key == "link_id").unwrap().value.clone();
-        assert_eq!(new_vertex_id_2, "Message:2");
-        assert_eq!(link_id_2, "IsBasedOn:1");
+        let node_fid_2 = res.attributes.iter().find(|a| a.key == "node_fid").unwrap().value.clone(); // Updated key
+        let link_fid_2 = res.attributes.iter().find(|a| a.key == "link_fid").unwrap().value.clone(); // Updated key
+        assert_eq!(node_fid_2, "Message:2");
+        assert_eq!(link_fid_2, "IsBasedOn:1");
 
         // Verify link direction
-        let query_link = QueryMsg::CyberlinkByID { id: link_id_2.clone() };
+        let query_link = QueryMsg::CyberlinkByFID { fid: link_fid_2.clone() };
         let link_res = query(deps.as_ref(), mock_env(), query_link).unwrap();
         let link_state: CyberlinkState = from_json(&link_res).unwrap();
         assert_eq!(link_state.type_, "IsBasedOn");
         assert_eq!(link_state.from, "Message:1"); // From existing
-        assert_eq!(link_state.to, new_vertex_id_2); // To new
+        assert_eq!(link_state.to, node_fid_2); // To new
     }
 }
