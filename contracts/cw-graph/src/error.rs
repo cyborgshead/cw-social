@@ -3,15 +3,15 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("Deleted cyberlink: {id}")]
-    DeletedCyberlink { id: String },
+    #[error("Deleted cyberlink: {fid}")]
+    DeletedCyberlink { fid: String },
 
-    #[error("Not found: {id}")]
-    NotFound { id: String },
+    #[error("Not found: {fid}")]
+    NotFound { fid: String },
 
     // TODO: revisit and change to id: String
-    #[error("Particular links is not allowed id: {id}, from: {from}, to: {to}, type: {type_}")]
-    InvalidCyberlink {id: Uint64, from: String, to: String, type_: String},
+    #[error("Particular links is not allowed - from: {from}, to: {to}, type: {type_}")]
+    InvalidCyberlink {from: String, to: String, type_: String},
 
     #[error("Type not exists: {type_}")]
     TypeNotExists { type_: String },

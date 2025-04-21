@@ -1,16 +1,18 @@
-use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS};
+use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_GIDS, GID, NAMED_CYBERLINKS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Deps, Env, Order, StdError, StdResult, Timestamp, Uint64};
 use cw_storage_plus::Bound;
 
-pub fn query_last_id(deps: Deps) -> StdResult<Uint64> {
-    let last_id = ID.load(deps.storage)?;
+use crate::msg::CountsResponse;
+
+pub fn query_last_gid(deps: Deps) -> StdResult<Uint64> {
+    let last_id = GID.load(deps.storage)?;
     Ok(Uint64::new(last_id))
 }
 
-pub fn query_id(deps: Deps, id: Uint64) -> StdResult<CyberlinkState> {
+pub fn query_cyberlink_by_gid(deps: Deps, id: Uint64) -> StdResult<CyberlinkState> {
     // Check if the cyberlink is deleted
-    if DELETED_IDS.may_load(deps.storage, id.u64())?.unwrap_or(false) {
+    if DELETED_GIDS.has(deps.storage, id.u64()) {
         return Err(StdError::not_found("deleted cyberlink"));
     }
 
@@ -53,15 +55,14 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 50;
 
-pub fn query_cyberlinks(deps: Deps, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+pub fn query_cyberlinks_by_gids(deps: Deps, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
     let start = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
     let cyberlinks = cyberlinks()
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|i| i.unwrap())
-        .collect::<Vec<(u64, CyberlinkState)>>();
+        .collect::<StdResult<Vec<_>>>()?;
     Ok(cyberlinks)
 }
 
@@ -86,28 +87,97 @@ pub fn query_cyberlinks_by_owner(deps: Deps, owner: String, start_after: Option<
     cyberlinks
 }
 
-pub fn query_named_cyberlinks(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, u64)>> {
+pub fn query_cyberlinks_by_type(deps: Deps, type_: String, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    cyberlinks()
+        .idx
+        .type_
+        .prefix(type_)
+        .range(
+            deps.storage,
+            start,
+            None,
+            Order::Ascending,
+        )
+        .take(limit)
+        .collect()
+}
+
+pub fn query_cyberlinks_by_from(deps: Deps, from: String, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    cyberlinks()
+        .idx
+        .from
+        .prefix(from)
+        .range(
+            deps.storage,
+            start,
+            None,
+            Order::Ascending,
+        )
+        .take(limit)
+        .collect()
+}
+
+pub fn query_cyberlinks_by_to(deps: Deps, to: String, start_after: Option<u64>, limit: Option<u32>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    cyberlinks()
+        .idx
+        .to
+        .prefix(to)
+        .range(
+            deps.storage,
+            start,
+            None,
+            Order::Ascending,
+        )
+        .take(limit)
+        .collect()
+}
+
+pub fn query_cyberlinks_by_fids(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<(String, CyberlinkState)>> {
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
-    let cyberlinks = NAMED_CYBERLINKS
+    let results = NAMED_CYBERLINKS
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|i| i.unwrap())
-        .collect::<Vec<(String, u64)>>();
-    Ok(cyberlinks)
+        .map(|item| -> StdResult<Option<(String, CyberlinkState)>> {
+            let (fid, gid) = item?;
+            if DELETED_GIDS.has(deps.storage, gid) {
+                return Ok(None); // Skip deleted
+            }
+            match cyberlinks().may_load(deps.storage, gid)? {
+                Some(state) => Ok(Some((fid, state))),
+                None => Ok(None), // Skip if GID not found in cyberlinks (should be rare)
+            }
+        })
+        .filter_map(Result::transpose) // Filter out None values and propagate Err
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(results)
 }
 
-pub fn query_cyberlinks_by_ids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64, CyberlinkState)>> {
+pub fn query_cyberlinks_set_by_gids(deps: Deps, ids: Vec<u64>) -> StdResult<Vec<(u64, CyberlinkState)>> {
     let mut links: Vec<(u64, CyberlinkState)> = vec![];
 
     for id in ids {
         // Skip deleted cyberlinks
-        if DELETED_IDS.may_load(deps.storage, id)?.unwrap_or(false) {
+        if DELETED_GIDS.has(deps.storage, id) {
             continue;
         }
-        let cyberlink = cyberlinks().load(deps.storage, id)?;
-        links.push((id, cyberlink));
+        // Use may_load to handle non-existent IDs gracefully
+        match cyberlinks().may_load(deps.storage, id) {
+            Ok(Some(cyberlink)) => links.push((id, cyberlink)),
+            Ok(None) => {} // GID not found, skip
+            Err(e) => return Err(e), // Propagate other errors
+        }
     }
 
     Ok(links)
@@ -215,20 +285,105 @@ pub fn query_cyberlinks_by_owner_time_any(
     Ok(result)
 }
 
-pub fn query_cyberlink_by_formatted_id(deps: Deps, formatted_id: String) -> StdResult<CyberlinkState> {
+pub fn query_cyberlink_by_fid(deps: Deps, fid: String) -> StdResult<CyberlinkState> {
     // First try to load directly from NAMED_CYBERLINKS
-    let global_id = NAMED_CYBERLINKS.load(deps.storage, &formatted_id)?;
-    if DELETED_IDS.has(deps.storage, global_id) {
-        return Err(StdError::not_found("cyberlink has been deleted"));
+    let gid = NAMED_CYBERLINKS.load(deps.storage, &fid)?;
+    if DELETED_GIDS.has(deps.storage, gid) {
+        return Err(StdError::not_found("deleted cyberlink"));
     }
 
-    let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    let cyberlink_state = cyberlinks().load(deps.storage, gid)?;
 
     Ok(cyberlink_state)
+}
+
+pub fn query_cyberlinks_set_by_fids(deps: Deps, fids: Vec<String>) -> StdResult<Vec<(String, CyberlinkState)>> {
+    let mut links: Vec<(String, CyberlinkState)> = vec![];
+
+    for fid in fids {
+        // Load the global ID corresponding to the formatted ID
+        match NAMED_CYBERLINKS.load(deps.storage, &fid) {
+            Ok(gid) => {
+                // Check if the cyberlink is deleted
+                if DELETED_GIDS.has(deps.storage, gid) {
+                    continue; // Skip deleted cyberlinks
+                }
+                // Load the cyberlink state
+                match cyberlinks().load(deps.storage, gid) {
+                    Ok(cyberlink_state) => {
+                        links.push((fid.clone(), cyberlink_state));
+                    },
+                    Err(_) => continue, // Skip if loading fails (should be rare if NAMED_CYBERLINKS exists)
+                }
+            },
+            Err(_) => continue, // Skip if the formatted ID doesn't exist
+        }
+    }
+
+    Ok(links)
+}
+
+pub fn query_cyberlinks_by_owner_and_type(
+    deps: Deps,
+    owner: String,
+    type_: String,
+    start_after: Option<u64>,
+    limit: Option<u32>
+) -> StdResult<Vec<(u64, CyberlinkState)>> {
+    let owner_addr = deps.api.addr_validate(&owner)?;
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
+    cyberlinks()
+        .idx
+        .owner_type
+        // Use prefix for the composite key (owner_addr, type_)
+        .prefix((owner_addr, type_))
+        .range(
+            deps.storage,
+            start, // The start_after (u64) refers to the primary key (GID)
+            None,
+            Order::Ascending,
+        )
+        .take(limit)
+        .collect()
 }
 
 #[cw_serde]
 pub struct StateResponse {
     pub cyberlinks: Vec<(u64, CyberlinkState)>,
     pub named_cyberlinks: Vec<(String, u64)>
+}
+
+// Tier 4 Query: Get Counts
+pub fn query_graph_stats(
+    deps: Deps,
+    owner: Option<String>,
+    type_: Option<String>,
+) -> StdResult<CountsResponse> {
+    let mut response = CountsResponse {
+        owner_count: None,
+        type_count: None,
+        owner_type_count: None,
+    };
+
+    // Load owner count if owner is specified
+    let owner_addr_opt = owner.as_ref().map(|o| deps.api.addr_validate(o)).transpose()?;
+    if let Some(ref owner_addr) = owner_addr_opt {
+        response.owner_count = OWNER_LINK_COUNT.may_load(deps.storage, owner_addr)?.map(Uint64::new);
+    }
+
+    // Load type count if type is specified
+    if let Some(ref type_str) = type_ {
+        response.type_count = TYPE_LINK_COUNT.may_load(deps.storage, type_str)?.map(Uint64::new);
+    }
+
+    // Load owner-type count if both owner and type are specified
+    if let (Some(ref owner_addr), Some(ref type_str)) = (owner_addr_opt, type_.as_ref()) {
+        response.owner_type_count = OWNER_TYPE_LINK_COUNT
+            .may_load(deps.storage, (owner_addr, type_str))?
+            .map(Uint64::new);
+    }
+
+    Ok(response)
 }

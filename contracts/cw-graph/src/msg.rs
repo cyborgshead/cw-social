@@ -42,11 +42,11 @@ pub enum ExecuteMsg {
         cyberlinks: Vec<Cyberlink>,
     },
     UpdateCyberlink {
-        id: String,
-        cyberlink: Cyberlink,
+        fid: String,
+        value: Option<String>,
     },
     DeleteCyberlink {
-        id: String,
+        fid: String,
     },
     UpdateAdmins {
         new_admins: Vec<String>
@@ -59,6 +59,14 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(CountsResponse)]
+    GetGraphStats {
+        // If owner is Some, returns owner_count and owner_type_count (if type_ is also Some)
+        owner: Option<String>,
+        // If type_ is Some, returns type_count and owner_type_count (if owner is also Some)
+        #[serde(rename = "type")]
+        type_: Option<String>,
+    },
     #[returns(ConfigResponse)]
     Config {},
     #[returns(StateResponse)]
@@ -66,31 +74,60 @@ pub enum QueryMsg {
     
     // Global IDs API
     #[returns(Uint64)]
-    LastId {},
+    LastGID {},
     #[returns(CyberlinkState)]
-    Cyberlink {
-        id: Uint64,
+    CyberlinkByGID {
+        gid: Uint64,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
-    Cyberlinks {
-        start_after: Option<u64>,
+    CyberlinksByGIDs {
+        start_after_gid: Option<u64>,
         limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksSetByGIDs {
+        gids: Vec<u64>,
     },
 
     // Formatted IDs API (default IDs)
+    #[returns(CyberlinkState)]
+    CyberlinkByFID {
+        fid: String,
+    },
     #[returns(Vec<(String, CyberlinkState)>)]
-    NamedCyberlinks {
-        start_after: Option<String>,
+    CyberlinksByFIDs {
+        start_after_fid: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(String, CyberlinkState)>)]
+    CyberlinksSetByFIDs {
+        fids: Vec<String>,
+    },
+
+    // Formatted IDs API (WIP)
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByType {
+        #[serde(rename = "type")]
+        type_: String,
+        start_after_gid: Option<u64>,
         limit: Option<u32>,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
-    CyberlinksByIds {
-        ids: Vec<u64>,
+    CyberlinksByFrom {
+        from: String,
+        start_after_gid: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByTo {
+        to: String,
+        start_after_gid: Option<u64>,
+        limit: Option<u32>,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
     CyberlinksByOwner {
         owner: String,
-        start_after: Option<u64>,
+        start_after_gid: Option<u64>,
         limit: Option<u32>,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
@@ -98,7 +135,7 @@ pub enum QueryMsg {
         owner: String,
         start_time: Timestamp,
         end_time: Option<Timestamp>,
-        start_after: Option<u64>,
+        start_after_gid: Option<u64>,
         limit: Option<u32>,
     },
     #[returns(Vec<(u64, CyberlinkState)>)]
@@ -106,11 +143,23 @@ pub enum QueryMsg {
         owner: String,
         start_time: Timestamp,
         end_time: Option<Timestamp>,
-        start_after: Option<u64>,
+        start_after_gid: Option<u64>,
         limit: Option<u32>,
     },
-    #[returns(CyberlinkState)]
-    CyberlinkById {
-        id: String,
+    #[returns(Vec<(u64, CyberlinkState)>)]
+    CyberlinksByOwnerAndType {
+        owner: String,
+        #[serde(rename = "type")]
+        type_: String,
+        start_after_gid: Option<u64>,
+        limit: Option<u32>,
     },
+}
+
+// Response struct for count queries
+#[cw_serde]
+pub struct CountsResponse {
+    pub owner_count: Option<Uint64>,
+    pub type_count: Option<Uint64>,
+    pub owner_type_count: Option<Uint64>,
 }
