@@ -22,14 +22,17 @@ pub enum ContractError {
     #[error("To not exists: {to}")]
     ToNotExists { to: String },
 
-    #[error("Type conflict \
-        link ( id: {id}, type: {type_}, from: {from}, to: {to} ),\
-        expected type: ( type: {expected_type}, from: {expected_from}, to: {expected_to} ),\
-        received_from: ( type: {received_type}, from: {received_from}, to: {received_to} )")]
+    #[error("Type conflict: link type '{type_}' connecting from '{from}' to '{to}'. Expected type: '{expected_type}' (constraints from: '{expected_from}', to: '{expected_to}'). Received type: '{received_type}' (actual from: '{received_from}', to: '{received_to}')")]
     TypeConflict {
-        id: String, type_: String, from: String, to: String,
-        expected_type: String, expected_from: String, expected_to: String,
-        received_type: String, received_from: String, received_to: String
+        type_: String,
+        from: String,
+        to: String,
+        expected_type: String,
+        expected_from: String,
+        expected_to: String,
+        received_type: String,
+        received_from: String,
+        received_to: String,
     },
 
     #[error("Cannot change cyberlink type: ID {id} from {original_type} to {new_type}")]
@@ -58,6 +61,9 @@ pub enum ContractError {
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("Invalid link specification: Exactly one of link_from_existing_id or link_to_existing_id must be provided")]
+    InvalidLinkSpecification {},
 }
 
 impl From<semver::Error> for ContractError {

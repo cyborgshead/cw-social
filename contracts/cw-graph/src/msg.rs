@@ -54,6 +54,19 @@ pub enum ExecuteMsg {
     UpdateExecutors {
         new_executors: Vec<String>
     },
+    CreateCyberlink2 {
+        /// Data for the new node to be created.
+        node_type: String,
+        node_value: Option<String>, // Optional value for the new node
+        /// Data for the new link (edge) to be created.
+        link_type: String,
+        link_value: Option<String>, // Optional value for the new link
+        /// Specifies the connection point for the link.
+        /// Exactly ONE of these must be Some, indicating the pre-existing node.
+        /// The other implicitly refers to the newly created node.
+        link_from_existing_id: Option<String>, // If Some, the link goes FROM this existing node TO the new one.
+        link_to_existing_id: Option<String>,   // If Some, the link goes FROM the new node TO this existing one.
+    },
 }
 
 #[cw_serde]

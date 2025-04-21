@@ -4,7 +4,7 @@ use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Empty, Env,
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors};
+use crate::execute::{execute_create_cyberlink, execute_create_cyberlinks, execute_create_named_cyberlink, execute_delete_cyberlink, execute_update_admins, execute_update_cyberlink, execute_update_executors, execute_create_cyberlink2};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query::{query_config, query_cyberlink_by_fid, query_cyberlinks_by_gids, query_cyberlinks_set_by_gids, query_cyberlinks_by_owner, query_cyberlinks_by_owner_time, query_cyberlinks_by_owner_time_any, query_cyberlink_by_gid, query_last_gid, query_cyberlinks_by_fids, query_state, query_cyberlinks_set_by_fids, query_cyberlinks_by_type, query_cyberlinks_by_from, query_cyberlinks_by_to, query_cyberlinks_by_owner_and_type, query_graph_stats};
 use crate::semcores::SemanticCore;
@@ -118,11 +118,29 @@ pub fn execute(
     match msg {
         ExecuteMsg::CreateNamedCyberlink { name, cyberlink } => execute_create_named_cyberlink(deps, env, info, name, cyberlink),
         ExecuteMsg::CreateCyberlink { cyberlink } => execute_create_cyberlink(deps, env, info, cyberlink),
+        ExecuteMsg::CreateCyberlink2 {
+            node_type,
+            node_value,
+            link_type,
+            link_value,
+            link_from_existing_id,
+            link_to_existing_id,
+        } => execute_create_cyberlink2(
+            deps, 
+            env, 
+            info, 
+            node_type,
+            node_value,
+            link_type, 
+            link_value, 
+            link_from_existing_id, 
+            link_to_existing_id
+        ),
         ExecuteMsg::CreateCyberlinks { cyberlinks } => execute_create_cyberlinks(deps, env, info, cyberlinks),
-        ExecuteMsg::UpdateCyberlink { fid: id, value } => execute_update_cyberlink(deps, env, info, id, value),
-        ExecuteMsg::DeleteCyberlink { fid: id } => execute_delete_cyberlink(deps, env, info, id),
+        ExecuteMsg::UpdateCyberlink { fid, value } => execute_update_cyberlink(deps, env, info, fid, value),
+        ExecuteMsg::DeleteCyberlink { fid } => execute_delete_cyberlink(deps, env, info, fid),
         ExecuteMsg::UpdateAdmins { new_admins } => execute_update_admins(deps, env, info, new_admins),
-        ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors)
+        ExecuteMsg::UpdateExecutors { new_executors } => execute_update_executors(deps, env, info, new_executors),
     }
 }
 

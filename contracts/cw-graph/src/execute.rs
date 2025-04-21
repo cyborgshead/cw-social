@@ -6,7 +6,7 @@ use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64, Storage, A
 
 fn validate_cyberlink(
     deps: Deps,
-    id: Option<String>,
+    fid: Option<String>,
     cyberlink: Cyberlink
 ) -> Result<(), ContractError> {
     // Validation
@@ -45,7 +45,6 @@ fn validate_cyberlink(
     if let (Some(_), Some(_)) = (&cyberlink.from, &cyberlink.to) {
         if dtype.clone().from.ne(&"Any") && dtype.clone().from.ne(&dfrom.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
-                id: id.unwrap_or_else(|| "_".to_string()),
                 type_: cyberlink.clone().type_,
                 from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
                 to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
@@ -60,7 +59,6 @@ fn validate_cyberlink(
 
         if dtype.to.ne(&"Any") && dtype.to.ne(&dto.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
-                id: id.unwrap_or_else(|| "_".to_string()),
                 type_: cyberlink.clone().type_,
                 from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
                 to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
@@ -400,5 +398,166 @@ fn decrement_counters(
     }
 
     Ok(())
+}
+
+fn validate_type_compatibility_for_cyberlink2(
+    link_type_state: &CyberlinkState,
+    node_type: &str, // Type of the node node being created
+    existing_node_state: &CyberlinkState, // State of the existing node being linked
+    link_from_new: bool, // True if the link is from the new node, false if to the new node
+    existing_node_fid: &str, // FID of the existing node for error reporting
+) -> Result<(), ContractError> {
+    if link_from_new { // Link: New -> Existing
+        // Check link_type's 'from' constraint against the new node's type
+        if link_type_state.from != "Any" && link_type_state.from != node_type {
+            return Err(ContractError::TypeConflict {
+                type_: link_type_state.type_.clone(),
+                from: "<new_node>".to_string(), // Placeholder as new FID isn't known yet
+                to: existing_node_fid.to_string(),
+                expected_type: link_type_state.type_.clone(),
+                expected_from: link_type_state.from.clone(),
+                expected_to: link_type_state.to.clone(),
+                received_type: link_type_state.type_.clone(),
+                received_from: node_type.to_string(),
+                received_to: existing_node_state.type_.clone(),
+            });
+        }
+        // Check link_type's 'to' constraint against the existing node's type
+        if link_type_state.to != "Any" && link_type_state.to != existing_node_state.type_ {
+            return Err(ContractError::TypeConflict {
+                type_: link_type_state.type_.clone(),
+                from: "<new_node>".to_string(),
+                to: existing_node_fid.to_string(),
+                expected_type: link_type_state.type_.clone(),
+                expected_from: link_type_state.from.clone(),
+                expected_to: link_type_state.to.clone(),
+                received_type: link_type_state.type_.clone(),
+                received_from: node_type.to_string(),
+                received_to: existing_node_state.type_.clone(),
+            });
+        }
+    } else { // Link: Existing -> New
+        // Check link_type's 'from' constraint against the existing node's type
+        if link_type_state.from != "Any" && link_type_state.from != existing_node_state.type_ {
+             return Err(ContractError::TypeConflict {
+                type_: link_type_state.type_.clone(),
+                from: existing_node_fid.to_string(),
+                to: "<new_node>".to_string(),
+                expected_type: link_type_state.type_.clone(),
+                expected_from: link_type_state.from.clone(),
+                expected_to: link_type_state.to.clone(),
+                received_type: link_type_state.type_.clone(),
+                received_from: existing_node_state.type_.clone(),
+                received_to: node_type.to_string(),
+             });
+        }
+        // Check link_type's 'to' constraint against the new node's type
+        if link_type_state.to != "Any" && link_type_state.to != node_type {
+             return Err(ContractError::TypeConflict {
+                type_: link_type_state.type_.clone(),
+                from: existing_node_fid.to_string(),
+                to: "<new_node>".to_string(),
+                expected_type: link_type_state.type_.clone(),
+                expected_from: link_type_state.from.clone(),
+                expected_to: link_type_state.to.clone(),
+                received_type: link_type_state.type_.clone(),
+                received_from: existing_node_state.type_.clone(),
+                received_to: node_type.to_string(),
+             });
+        }
+    }
+    Ok(())
+}
+
+pub fn execute_create_cyberlink2(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    node_type: String,
+    node_value: Option<String>,
+    link_type: String,
+    link_value: Option<String>,
+    link_from_existing_id: Option<String>,
+    link_to_existing_id: Option<String>,
+) -> Result<Response, ContractError> {
+    // Input Validation and Link Specification
+    let (existing_node_fid, link_from_new, _link_to_new) = // Renamed link_to_new as it's unused after this block
+        match (link_from_existing_id.clone(), link_to_existing_id.clone()) {
+            (Some(from_id), None) => (from_id, false, true), // Link FROM existing TO new
+            (None, Some(to_id)) => (to_id, true, false),   // Link FROM new TO existing
+            _ => return Err(ContractError::InvalidLinkSpecification {}),
+        };
+
+    // Type Existence
+    let _node_type_gid = NAMED_CYBERLINKS.may_load(deps.storage, &node_type)? // Renamed to avoid shadowing
+        .ok_or_else(|| ContractError::TypeNotExists { type_: node_type.clone() })?;
+    // Load node type state only if needed for strict validation later, otherwise existence check is enough
+    // let _node_type_state = cyberlinks().load(deps.storage, node_type_gid)?;
+    
+    let link_type_gid = NAMED_CYBERLINKS.may_load(deps.storage, &link_type)?
+        .ok_or_else(|| ContractError::TypeNotExists { type_: link_type.clone() })?;
+    let link_type_state = cyberlinks().load(deps.storage, link_type_gid)?;
+
+    // Existing Node Validation
+    let existing_node_gid = NAMED_CYBERLINKS.may_load(deps.storage, &existing_node_fid)?
+        .ok_or_else(|| {
+            if link_from_new { // Linking TO existing, so it's a 'ToNotExists' error
+                ContractError::ToNotExists { to: existing_node_fid.clone() }
+            } else { // Linking FROM existing, so it's a 'FromNotExists' error
+                ContractError::FromNotExists { from: existing_node_fid.clone() }
+            }
+        })?;
+    
+    if DELETED_GIDS.has(deps.storage, existing_node_gid) {
+        return Err(ContractError::NotFound { fid: existing_node_fid.clone() }); // Treat deleted as not found for linking
+    }
+    let existing_node_state = cyberlinks().load(deps.storage, existing_node_gid)?;
+
+    // Type Compatibility Validation (Using loaded states)
+    validate_type_compatibility_for_cyberlink2(
+        &link_type_state,
+        &node_type,
+        &existing_node_state,
+        link_from_new,
+        &existing_node_fid,
+    )?;
+
+    // Create New Node
+    let node_cyberlink = Cyberlink {
+        type_: node_type, // Use validated node_type
+        from: None, // Vertices are nodes, no from/to
+        to: None,
+        value: node_value,
+    };
+    // Use deps.branch() for the first creation to isolate potential state changes if create_cyberlink modified more state
+    let (node_gid, node_fid) = 
+        create_cyberlink(deps.branch(), env.clone(), info.clone(), None, node_cyberlink)?;
+
+    // 4. Create Link
+    let (link_from, link_to) = if link_from_new {
+        (Some(node_fid.clone()), Some(existing_node_fid.clone()))
+    } else {
+        (Some(existing_node_fid.clone()), Some(node_fid.clone()))
+    };
+
+    let link_cyberlink = Cyberlink {
+        type_: link_type, // Use validated link_type
+        from: link_from,
+        to: link_to,
+        value: link_value,
+    };
+    // Don't need validate_cyberlink here as create_cyberlink does necessary checks (like type existence)
+    // and we performed the complex logic checks (like type compatibility) already.
+    let (link_gid, link_fid) = 
+        create_cyberlink(deps, env, info, None, link_cyberlink)?;
+
+    // 5. Response
+    Ok(Response::new()
+        .add_attribute("action", "create_cyberlink2")
+        .add_attribute("node_gid", node_gid.to_string())
+        .add_attribute("node_fid", node_fid)
+        .add_attribute("link_gid", link_gid.to_string())
+        .add_attribute("link_fid", link_fid)
+    )
 }
 
