@@ -1,7 +1,7 @@
 use crate::contract::map_validate;
 use crate::error::ContractError;
 use crate::msg::Cyberlink;
-use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_IDS, ID, NAMED_CYBERLINKS, TYPE_IDS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
+use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_GIDS, GID, NAMED_CYBERLINKS, TYPE_GIDS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
 use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64, Storage, Addr, StdResult};
 
 fn validate_cyberlink(
@@ -12,7 +12,6 @@ fn validate_cyberlink(
     // Validation
     if cyberlink.from != cyberlink.to && (cyberlink.from.is_none() || cyberlink.to.is_none()) {
         return Err(ContractError::InvalidCyberlink {
-            id: Uint64::zero(),
             from: cyberlink.from.unwrap_or_else(|| "_".to_string()),
             to: cyberlink.to.unwrap_or_else(|| "_".to_string()),
             type_: cyberlink.type_.clone(),
@@ -86,14 +85,14 @@ fn create_cyberlink(
     cyberlink: Cyberlink
 ) -> Result<(u64, String), ContractError> {
     // Get next global ID for internal indexing
-    let id = ID.load(deps.storage)? + 1;
-    ID.save(deps.storage, &id)?;
+    let id = GID.load(deps.storage)? + 1;
+    GID.save(deps.storage, &id)?;
 
     let formatted_id: String;
     if name.is_none() {
         // Get and increment the type-specific ID
-        let type_id = TYPE_IDS.may_load(deps.storage, cyberlink.type_.as_str())?.unwrap_or(0) + 1;
-        TYPE_IDS.save(deps.storage, cyberlink.type_.as_str(), &type_id)?;
+        let type_id = TYPE_GIDS.may_load(deps.storage, cyberlink.type_.as_str())?.unwrap_or(0) + 1;
+        TYPE_GIDS.save(deps.storage, cyberlink.type_.as_str(), &type_id)?;
 
         // Generate the formatted ID string (e.g., "post:42")
         formatted_id = format!("{}:{}", cyberlink.type_, type_id);
@@ -111,7 +110,7 @@ fn create_cyberlink(
         owner: info.sender.clone(),
         created_at: env.block.time,
         updated_at: None,
-        formatted_id: Some(formatted_id.clone()),
+        fid: Some(formatted_id.clone()),
     };
 
     // Also save the cyberlink with its string ID for direct access
@@ -153,8 +152,8 @@ pub fn execute_create_named_cyberlink(
 
     Ok(Response::new()
         .add_attribute("action", "create_cyberlink")
-        .add_attribute("numeric_id", numeric_id.to_string())
-        .add_attribute("formatted_id", formatted_id)
+        .add_attribute("gid", numeric_id.to_string())
+        .add_attribute("fid", formatted_id)
         .add_attribute("type", cyberlink.type_)
     )
 }
@@ -179,9 +178,9 @@ pub fn execute_create_cyberlink(
 
     Ok(Response::new()
         .add_attribute("action", "create_cyberlink")
-        .add_attribute("numeric_id", numeric_id.to_string())
-        .add_attribute("formatted_id", formatted_id)
         .add_attribute("type", cyberlink.type_)
+        .add_attribute("gid", numeric_id.to_string())
+        .add_attribute("fid", formatted_id)
     )
 }
 
@@ -197,24 +196,24 @@ pub fn execute_create_cyberlinks(
         return Err(ContractError::Unauthorized {});
     }
 
-    let mut numeric_ids = Vec::with_capacity(cyberlinks.len());
-    let mut formatted_ids = Vec::with_capacity(cyberlinks.len());
+    let mut gids = Vec::with_capacity(cyberlinks.len());
+    let mut fids = Vec::with_capacity(cyberlinks.len());
     
     for cyberlink in cyberlinks {
         // Validate the cyberlink
         validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
 
         // Create the cyberlink (this now increments counters internally)
-        let (numeric_id, formatted_id) = create_cyberlink(deps.branch(), env.clone(), info.clone(), None, cyberlink)?;
-        numeric_ids.push(numeric_id);
-        formatted_ids.push(formatted_id);
+        let (gid, fid) = create_cyberlink(deps.branch(), env.clone(), info.clone(), None, cyberlink)?;
+        gids.push(gid);
+        fids.push(fid);
     }
 
     Ok(Response::new()
         .add_attribute("action", "create_cyberlinks")
-        .add_attribute("count", numeric_ids.len().to_string())
-        .add_attribute("numeric_ids", numeric_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(","))
-        .add_attribute("formatted_ids", formatted_ids.join(","))
+        .add_attribute("count", gids.len().to_string())
+        .add_attribute("gids", gids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(","))
+        .add_attribute("fids", fids.join(","))
     )
 }
 
@@ -222,18 +221,18 @@ pub fn execute_update_cyberlink(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    id: String,
+    fid: String,
     new_value: Option<String>, // Renamed parameter
 ) -> Result<Response, ContractError> {
-    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
+    let gid = NAMED_CYBERLINKS.may_load(deps.storage, fid.as_str())?.ok_or_else(|| ContractError::NotFound { fid: fid.clone() })?;
 
-    let deleted_id = DELETED_IDS.may_load(deps.storage, global_id)?;
+    let deleted_id = DELETED_GIDS.may_load(deps.storage, gid)?;
     if deleted_id.is_some() {
-        return Err(ContractError::DeletedCyberlink { id });
+        return Err(ContractError::DeletedCyberlink { fid });
     }
 
     // Check if the cyberlink exists and load old state
-    let old_cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    let old_cyberlink_state = cyberlinks().load(deps.storage, gid)?;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -242,18 +241,18 @@ pub fn execute_update_cyberlink(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Update the state
-    let mut updated_state = old_cyberlink_state; // Use old state directly
-    updated_state.value = new_value.unwrap_or_default(); // Update value
-    updated_state.updated_at = Some(env.block.time); // Set updated time
-
-    // Save updated state
-    cyberlinks().save(deps.storage, global_id, &updated_state)?;
+    // Update the state and save
+    cyberlinks().update(deps.storage, gid, |old_opt| -> Result<CyberlinkState, ContractError> {
+        let mut state = old_opt.ok_or_else(|| ContractError::NotFound { fid: fid.clone() })?;
+        state.value = new_value.unwrap_or_default(); // Update value
+        state.updated_at = Some(env.block.time); // Set updated time
+        Ok(state)
+    })?;
 
     Ok(Response::new()
         .add_attribute("action", "update_cyberlink")
-        .add_attribute("numeric_id", global_id.to_string())
-        .add_attribute("formatted_id", id)
+        .add_attribute("gid", gid.to_string())
+        .add_attribute("fid", fid)
     )
 }
 
@@ -261,18 +260,18 @@ pub fn execute_delete_cyberlink(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    id: String // Formatted ID (e.g., "Type:1")
+    fid: String // Formatted ID (e.g., "Type:1")
 ) -> Result<Response, ContractError> {
     // Load the global ID corresponding to the formatted ID
-    let global_id = NAMED_CYBERLINKS.may_load(deps.storage, id.as_str())?.ok_or_else(|| ContractError::NotFound { id: id.clone() })?;
+    let gid = NAMED_CYBERLINKS.may_load(deps.storage, fid.as_str())?.ok_or_else(|| ContractError::NotFound { fid: fid.clone() })?;
 
     // Check if already marked as deleted
-    if DELETED_IDS.has(deps.storage, global_id) {
-        return Err(ContractError::DeletedCyberlink { id });
+    if DELETED_GIDS.has(deps.storage, gid) {
+        return Err(ContractError::DeletedCyberlink { fid: fid });
     }
 
     // Load the cyberlink state to check ownership and get details for counter decrement
-    let cyberlink_state = cyberlinks().load(deps.storage, global_id)?;
+    let cyberlink_state = cyberlinks().load(deps.storage, gid)?;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -286,18 +285,18 @@ pub fn execute_delete_cyberlink(
     // -------------------------
 
     // Mark the cyberlink as deleted using the DELETED_IDS map
-    DELETED_IDS.save(deps.storage, global_id, &true)?;
+    DELETED_GIDS.save(deps.storage, gid, &true)?;
 
     // Optional: Completely remove the cyberlink state and its named entry to save space
-    cyberlinks().remove(deps.storage, global_id)?;
-    // NAMED_CYBERLINKS.remove(deps.storage, id.as_str());
+    cyberlinks().remove(deps.storage, gid)?;
+    // NAMED_CYBERLINKS.remove(deps.storage, id.as _str());
     // Consider the implications: Queries by GID will fail entirely instead of returning a "deleted" error.
     // Queries relying on the existence of the NAMED_CYBERLINKS entry will also fail.
 
     Ok(Response::new()
         .add_attribute("action", "delete_cyberlink")
-        .add_attribute("numeric_id", global_id.to_string())
-        .add_attribute("formatted_id", id)
+        .add_attribute("gid", gid.to_string())
+        .add_attribute("fid", fid)
     )
 }
 
