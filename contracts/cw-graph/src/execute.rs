@@ -2,18 +2,17 @@ use crate::contract::map_validate;
 use crate::error::ContractError;
 use crate::msg::Cyberlink;
 use crate::state::{cyberlinks, CyberlinkState, CONFIG, DELETED_GIDS, GID, NAMED_CYBERLINKS, TYPE_GIDS, OWNER_LINK_COUNT, TYPE_LINK_COUNT, OWNER_TYPE_LINK_COUNT};
-use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Uint64, Storage, Addr, StdResult};
+use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response, Storage, Addr, StdResult};
 
 fn validate_cyberlink(
     deps: Deps,
-    fid: Option<String>,
     cyberlink: Cyberlink
 ) -> Result<(), ContractError> {
     // Validation
     if cyberlink.from != cyberlink.to && (cyberlink.from.is_none() || cyberlink.to.is_none()) {
         return Err(ContractError::InvalidCyberlink {
-            from: cyberlink.from.unwrap_or_else(|| "_".to_string()),
-            to: cyberlink.to.unwrap_or_else(|| "_".to_string()),
+            from: cyberlink.from.unwrap_or_else(|| "None".to_string()),
+            to: cyberlink.to.unwrap_or_else(|| "None".to_string()),
             type_: cyberlink.type_.clone(),
         });
     }
@@ -29,14 +28,14 @@ fn validate_cyberlink(
     if cyberlink.from.is_some() {
         let dfrom_id = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().from.unwrap().as_str())?;
         if dfrom_id.is_none() {
-            return Err(ContractError::FromNotExists { from: cyberlink.from.unwrap_or_else(|| "_".to_string()) });
+            return Err(ContractError::FromNotExists { from: cyberlink.from.clone().unwrap() });
         }
         dfrom = cyberlinks().may_load(deps.storage, dfrom_id.unwrap()).unwrap();
     }
     if cyberlink.to.is_some() {
         let dto_id = NAMED_CYBERLINKS.may_load(deps.storage, cyberlink.clone().to.unwrap().as_str())?;
         if dto_id.is_none() {
-            return Err(ContractError::ToNotExists { to: cyberlink.to.unwrap_or_else(|| "_".to_string()) });
+            return Err(ContractError::ToNotExists { to: cyberlink.to.clone().unwrap() });
         }
         dto = cyberlinks().may_load(deps.storage, dto_id.unwrap()).unwrap();
     }
@@ -46,8 +45,8 @@ fn validate_cyberlink(
         if dtype.clone().from.ne(&"Any") && dtype.clone().from.ne(&dfrom.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
                 type_: cyberlink.clone().type_,
-                from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
-                to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
+                from: cyberlink.from.clone().unwrap(),
+                to: cyberlink.to.clone().unwrap(),
                 expected_type: cyberlink.clone().type_,
                 expected_from: dtype.clone().from,
                 expected_to: dtype.clone().to,
@@ -60,8 +59,8 @@ fn validate_cyberlink(
         if dtype.to.ne(&"Any") && dtype.to.ne(&dto.clone().unwrap().type_) {
             return Err(ContractError::TypeConflict {
                 type_: cyberlink.clone().type_,
-                from: cyberlink.clone().from.unwrap_or_else(|| "_".to_string()),
-                to: cyberlink.clone().to.unwrap_or_else(|| "_".to_string()),
+                from: cyberlink.from.clone().unwrap(),
+                to: cyberlink.to.clone().unwrap(),
                 expected_type: cyberlink.clone().type_,
                 expected_from: dtype.from,
                 expected_to: dtype.to,
@@ -118,7 +117,7 @@ fn create_cyberlink(
     cyberlinks().save(deps.storage, id, &cyberlink_state)?;
 
     // ---- Increment Counters ----
-    increment_counters(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
+    increment_stats(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
     // -------------------------
 
     Ok((id, formatted_id))
@@ -143,7 +142,7 @@ pub fn execute_create_named_cyberlink(
     }
 
     // Validate the cyberlink
-    validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
+    validate_cyberlink(deps.as_ref(), cyberlink.clone())?;
 
     // Create the cyberlink
     let (numeric_id, formatted_id) = create_cyberlink(deps, env, info, Some(name), cyberlink.clone())?;
@@ -169,7 +168,7 @@ pub fn execute_create_cyberlink(
     }
 
     // Validate the cyberlink
-    validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
+    validate_cyberlink(deps.as_ref(), cyberlink.clone())?;
 
     // Create the cyberlink
     let (numeric_id, formatted_id) = create_cyberlink(deps, env, info, None, cyberlink.clone())?;
@@ -199,7 +198,7 @@ pub fn execute_create_cyberlinks(
     
     for cyberlink in cyberlinks {
         // Validate the cyberlink
-        validate_cyberlink(deps.as_ref(), None, cyberlink.clone())?;
+        validate_cyberlink(deps.as_ref(), cyberlink.clone())?;
 
         // Create the cyberlink (this now increments counters internally)
         let (gid, fid) = create_cyberlink(deps.branch(), env.clone(), info.clone(), None, cyberlink)?;
@@ -279,7 +278,7 @@ pub fn execute_delete_cyberlink(
     }
 
     // ---- Decrement Counters ----
-    decrement_counters(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
+    decrement_stats(deps.storage, &cyberlink_state.owner, &cyberlink_state.type_)?;
     // -------------------------
 
     // Mark the cyberlink as deleted using the DELETED_IDS map
@@ -348,7 +347,7 @@ pub fn execute_update_executors(
 
 // --- Counter Helper Functions ---
 
-fn increment_counters(
+fn increment_stats(
     storage: &mut dyn Storage,
     owner: &Addr,
     type_: &str,
@@ -368,7 +367,7 @@ fn increment_counters(
     Ok(())
 }
 
-fn decrement_counters(
+fn decrement_stats(
     storage: &mut dyn Storage,
     owner: &Addr,
     type_: &str,
@@ -402,7 +401,7 @@ fn decrement_counters(
 
 fn validate_type_compatibility_for_cyberlink2(
     link_type_state: &CyberlinkState,
-    node_type: &str, // Type of the node node being created
+    node_type: &str, // Type of the node being created
     existing_node_state: &CyberlinkState, // State of the existing node being linked
     link_from_new: bool, // True if the link is from the new node, false if to the new node
     existing_node_fid: &str, // FID of the existing node for error reporting
@@ -412,7 +411,7 @@ fn validate_type_compatibility_for_cyberlink2(
         if link_type_state.from != "Any" && link_type_state.from != node_type {
             return Err(ContractError::TypeConflict {
                 type_: link_type_state.type_.clone(),
-                from: "<new_node>".to_string(), // Placeholder as new FID isn't known yet
+                from: format!("new:{}", node_type), // Placeholder showing new node type
                 to: existing_node_fid.to_string(),
                 expected_type: link_type_state.type_.clone(),
                 expected_from: link_type_state.from.clone(),
@@ -426,7 +425,7 @@ fn validate_type_compatibility_for_cyberlink2(
         if link_type_state.to != "Any" && link_type_state.to != existing_node_state.type_ {
             return Err(ContractError::TypeConflict {
                 type_: link_type_state.type_.clone(),
-                from: "<new_node>".to_string(),
+                from: format!("new:{}", node_type),
                 to: existing_node_fid.to_string(),
                 expected_type: link_type_state.type_.clone(),
                 expected_from: link_type_state.from.clone(),
@@ -442,7 +441,7 @@ fn validate_type_compatibility_for_cyberlink2(
              return Err(ContractError::TypeConflict {
                 type_: link_type_state.type_.clone(),
                 from: existing_node_fid.to_string(),
-                to: "<new_node>".to_string(),
+                to: format!("new:{}", node_type),
                 expected_type: link_type_state.type_.clone(),
                 expected_from: link_type_state.from.clone(),
                 expected_to: link_type_state.to.clone(),
@@ -456,7 +455,7 @@ fn validate_type_compatibility_for_cyberlink2(
              return Err(ContractError::TypeConflict {
                 type_: link_type_state.type_.clone(),
                 from: existing_node_fid.to_string(),
-                to: "<new_node>".to_string(),
+                to: format!("new:{}", node_type),
                 expected_type: link_type_state.type_.clone(),
                 expected_from: link_type_state.from.clone(),
                 expected_to: link_type_state.to.clone(),

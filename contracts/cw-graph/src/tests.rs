@@ -1368,7 +1368,7 @@ mod tests {
         let post2_fid = res_post2.attributes.iter().find(|a| a.key == "fid").unwrap().value.clone();
         let post2_gid: u64 = res_post2.attributes.iter().find(|a| a.key == "gid").unwrap().value.parse().unwrap();
 
-        let all_gids = vec![profile1_gid, profile2_gid, follow1_gid, post1_gid, post2_gid];
+        let _all_gids = vec![profile1_gid, profile2_gid, follow1_gid, post1_gid, post2_gid];
         let all_fids = vec![profile1_fid.clone(), profile2_fid.clone(), follow1_fid.clone(), post1_fid.clone(), post2_fid.clone()];
 
         // --- Test CyberlinksByGIDs (Pagination) ---

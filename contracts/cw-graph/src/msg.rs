@@ -1,6 +1,8 @@
 use cosmwasm_std::Uint64;
 use cosmwasm_schema::{cw_serde, QueryResponses};
+#[allow(unused_imports)]
 use crate::query::{ConfigResponse, StateResponse};
+#[allow(unused_imports)]
 use crate::state::CyberlinkState;
 use cosmwasm_std::Timestamp;
 
