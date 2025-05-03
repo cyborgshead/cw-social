@@ -163,9 +163,9 @@ pub fn execute_create_cyberlink(
 ) -> Result<Response, ContractError> {
     // Check if the user is an executor
     let config = CONFIG.load(deps.storage)?;
-    if !config.can_execute(info.sender.as_str()) {
-        return Err(ContractError::Unauthorized {});
-    }
+    // if !config.can_execute(info.sender.as_str()) {
+    //     return Err(ContractError::Unauthorized {});
+    // }
 
     // Validate the cyberlink
     validate_cyberlink(deps.as_ref(), cyberlink.clone())?;
@@ -189,9 +189,9 @@ pub fn execute_create_cyberlinks(
 ) -> Result<Response, ContractError> {
     // Check if the user is an executor
     let config = CONFIG.load(deps.storage)?;
-    if !config.can_execute(info.sender.as_str()) {
-        return Err(ContractError::Unauthorized {});
-    }
+    // if !config.can_execute(info.sender.as_str()) {
+    //     return Err(ContractError::Unauthorized {});
+    // }
 
     let mut gids = Vec::with_capacity(cyberlinks.len());
     let mut fids = Vec::with_capacity(cyberlinks.len());
