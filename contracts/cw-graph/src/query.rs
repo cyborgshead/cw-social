@@ -37,11 +37,11 @@ pub struct ConfigResponse {
 
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let cyberlinks = cyberlinks()
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Order::Descending)
         .map(|i| i.unwrap())
         .collect::<Vec<(u64, CyberlinkState)>>();
     let named_cyberlinks = NAMED_CYBERLINKS
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Order::Descending)
         .map(|i| i.unwrap())
         .collect::<Vec<(String, u64)>>();
 
@@ -60,7 +60,7 @@ pub fn query_cyberlinks_by_gids(deps: Deps, start_after: Option<u64>, limit: Opt
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
     let cyberlinks = cyberlinks()
-        .range(deps.storage, start, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Descending)
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
     Ok(cyberlinks)
@@ -79,7 +79,7 @@ pub fn query_cyberlinks_by_owner(deps: Deps, owner: String, start_after: Option<
             deps.storage,
             start_after.map(Bound::exclusive),
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect();
@@ -99,7 +99,7 @@ pub fn query_cyberlinks_by_type(deps: Deps, type_: String, start_after: Option<u
             deps.storage,
             start,
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect()
@@ -117,7 +117,7 @@ pub fn query_cyberlinks_by_from(deps: Deps, from: String, start_after: Option<u6
             deps.storage,
             start,
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect()
@@ -135,7 +135,7 @@ pub fn query_cyberlinks_by_to(deps: Deps, to: String, start_after: Option<u64>, 
             deps.storage,
             start,
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect()
@@ -146,7 +146,7 @@ pub fn query_cyberlinks_by_fids(deps: Deps, start_after: Option<String>, limit: 
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
 
     let results = NAMED_CYBERLINKS
-        .range(deps.storage, start, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Descending)
         .take(limit)
         .map(|item| -> StdResult<Option<(String, CyberlinkState)>> {
             let (fid, gid) = item?;
@@ -212,7 +212,7 @@ pub fn query_cyberlinks_by_owner_time(
             // Use bounds on just the timestamp part
             Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
             Some(Bound::inclusive((end_nanos, u64::MAX))),
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
@@ -247,7 +247,7 @@ pub fn query_cyberlinks_by_owner_time_any(
             deps.storage,
             Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
             Some(Bound::inclusive((end_nanos, u64::MAX))),
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
@@ -261,7 +261,7 @@ pub fn query_cyberlinks_by_owner_time_any(
             deps.storage,
             Some(Bound::exclusive((start_nanos, start_after.unwrap_or(0u64)))),
             Some(Bound::inclusive((end_nanos, u64::MAX))),
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
@@ -343,7 +343,7 @@ pub fn query_cyberlinks_by_owner_and_type(
             deps.storage,
             start, // The start_after (u64) refers to the primary key (GID)
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .collect()
